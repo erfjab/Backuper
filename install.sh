@@ -82,7 +82,10 @@ check_needs() {
 menu() {
     while true; do
         print "\n\t Welcome to Backuper!"
-        print "\t\t version 0.1.0 by @ErfJab"
+        print "\t\t  __        __             __   ___  __      __          ___  __   ___            __  
+|__)  /\  /  ` |__/ |  | |__) |__  |__)    |__) \ /    |__  |__) |__     |  /\  |__) 
+|__) /~~\ \__, |  \ \__/ |    |___ |  \    |__)  |     |___ |  \ |    \__/ /~~\ |__) 
+                                                                                     version 0.1.0"
         print "—————————————————————————————————————————————————————————————————————————"
         print "1) install"
         print "2) manage"
