@@ -514,7 +514,7 @@ marzban_template() {
             if [[ "$db_type" == "mysql" ]]; then
                 local env_file="/opt/marzban/.env"
                 if [[ -f "$env_file" ]]; then
-                    source <(grep -v '^#' "$env_file" | grep -E 'SQLALCHEMY_DATABASE_URL|MYSQL_ROOT_PASSWORD')
+                    source <(grep -v '^#' "$env_file" | grep -E 'SQLALCHEMY_DATABASE_URL|MYSQL_ROOT_PASSWORD' | sed 's/^/export /')
                     if [ -z "$SQLALCHEMY_DATABASE_URL" ] || [ -z "$MYSQL_ROOT_PASSWORD" ]; then
                         error "Missing parameters in $env_file."
                         exit 1
