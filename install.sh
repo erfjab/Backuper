@@ -101,7 +101,7 @@ check_needs() {
 menu() {
     while true; do
         print "\n\t Welcome to Backuper!"
-        print "\t\t version 0.2.0 by @ErfJab"
+        print "\t\t version 0.2.1 by @ErfJab"
         print "—————————————————————————————————————————————————————————————————————————"
         print "1) Install"
         print "2) Manage"
