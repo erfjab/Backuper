@@ -738,7 +738,7 @@ fi
 ip=\$(hostname -I | awk '{print \$1}')
 timestamp=\$(TZ='Asia/Tehran' date +%m%d-%H%M)
 base_name="/root/${name}_\${timestamp}."
-backup_name="/root/${name}_\${timestamp}$compression_ext"
+backup_name="/root/${name}_\${timestamp}${compression_ext}"
 caption="$caption
 
 📦  from \$ip
