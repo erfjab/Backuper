@@ -105,6 +105,7 @@ menu() {
         print "—————————————————————————————————————————————————————————————————————————"
         print "1) Install"
         print "2) Manage"
+        print "3) Restore"
         print "0) Exit"
         print ""
         input "Enter your option number: " option
@@ -115,6 +116,9 @@ menu() {
                 ;;
             2)
                 manage_backups
+                ;;
+            3)
+                restore_backup
                 ;;
             0)
                 print "Thank you for using @ErfJabs script. Goodbye!"
@@ -809,6 +813,166 @@ EOL
         exit 1
     fi
 }
+
+
+#Restore backup
+restore_backup() {
+ 
+#Check zip file requires a password or not
+check_zip_password() {
+    local zip_file="$1"
+crypted=$( 7z l -slt -- $zip_file | grep -i -c "Encrypted = +" )
+if [ "$crypted" -eq "1" ]; then
+    return 1
+else
+    return 0
+fi
+}
+
+#Check 7z file requires a password or not
+check_7z_password() {
+    local 7z_file="$1"
+    crypted=$( 7z l -slt -- $7z_file | grep -i -c "Encrypted = +" )
+    if [ "$crypted" -eq "1" ]; then
+        return 1
+    else
+        return 0
+    fi
+
+}
+
+# Function to extract and copy files from the archive to the correct system paths
+extract_and_copy_archive() {
+    local archive_file="$1"
+    local base_name
+    local temp_dir
+    local sevenz_password
+    local zip_password
+
+    # Extract base name without extension
+    base_name=$(basename "$archive_file" | sed 's/\.[^.]*$//')
+    temp_dir="/root/Restore/old-$base_name"
+
+    # Ensure temp directory is clean
+    rm -rf "$temp_dir"
+    mkdir -p "$temp_dir"
+
+    if [ ! -f "$archive_file" ]; then
+        echo "File $archive_file does not exist."
+        exit 1
+    fi
+
+    case "$archive_file" in
+        *.zip)
+            echo "Handling ZIP file."
+            if check_zip_password "$archive_file"; then
+                echo "The ZIP file requires a password."
+                read -p "Please enter the password for the ZIP file: " zip_password
+                if ! unzip -P "$zip_password" "$archive_file" -d "$temp_dir" >/dev/null 2>&1; then
+                echo "Error extracting ZIP file with the provided password."
+                exit 1
+                fi
+                
+            else
+                echo "The ZIP file does not require a password."
+                unzip "$archive_file" -d "$temp_dir" >/dev/null 2>&1
+
+            fi
+            ;;
+        *.7z)
+            echo "Handling 7z file."
+            if check_7z_password "$archive_file"; then
+                echo "The 7z file requires a password."
+                read -p "Enter the password for the 7z file:" sevenz_password
+                if ! 7z x -p"$sevenz_password" "$archive_file" -o"$temp_dir" >/dev/null 2>&1; then
+                    echo "Failed to extract 7z file with the provided password."
+                    exit 1
+                fi
+            else
+                echo "The 7z file does not require a password."
+                7z x "$archive_file" -o"$temp_dir" >/dev/null 2>&1
+
+            fi
+            ;;
+        *)
+            echo "Unsupported file format. Please provide a ZIP or 7z file."
+            rm -rf "$temp_dir"
+            exit 1
+            ;;
+    esac
+
+    if [ $? -ne 0 ]; then
+        echo "Failed to extract $archive_file. Please check the password and try again."
+        rm -rf "$temp_dir"
+        exit 1
+    fi
+
+    # Copy files from the temporary extraction directory to system paths
+    echo "Copying files from temporary directory to system paths..."
+    cd "$temp_dir" || exit
+    find . -type f | while read -r file; do
+        target_path="/${file#./}"
+        echo "Copying file: $file to $target_path"
+        mkdir -p "$(dirname "$target_path")"
+        cp "$file" "$target_path"
+    done
+
+    find . -type d | while read -r dir; do
+        target_path="/${dir#./}"
+        echo "Creating directory: $dir at $target_path"
+        mkdir -p "$target_path"
+    done
+
+    # Remove temporary directory
+    remove_old_archives "$base_name"
+    echo "Files from $archive_file have been successfully extracted and copied."
+}
+remove_old_archives() {
+read -p "Do you want to remove old archives? (y/n) " answer
+local name=$1;
+if [ "$answer" == "y" ]; then
+    echo "removing old archives"
+    find /root/Restore/ -name "old-$name" -type d -exec rm -rf {} \;
+else
+    echo "skipping removal of old archives"
+    echo "You can find the extracted files in /root/Restore/old-$name"
+fi
+
+
+}
+# Main function for the menu and extraction option
+menu() {
+    while true; do
+        echo "\n\t Select an option:"
+        echo "—————————————————————————————————————————————————————————————————————————"
+        echo "1) Marzban Panel"
+        echo "0) Exit"
+        echo ""
+        echo -n "Enter your option number: "
+        read option
+        clear
+        case $option in
+            1)
+                read -p "Enter the path to the archive file (.zip or .7z): " archive_file
+                extract_and_copy_archive "$archive_file"
+                ;;
+            0)
+                echo "Thank you for using the Backup Utility. Goodbye!"
+                exit 0
+                ;;
+            *)
+                echo "Invalid option, Please select a valid option!"
+                ;;
+        esac
+    done
+}
+
+# Run the menu
+menu
+
+
+}
+
 
 run() {
     cd
