@@ -867,12 +867,12 @@ extract_and_copy_archive() {
     case "$archive_file" in
         *.zip)
             print "Handling ZIP file."
-            if unzip "$archive_file" -d "$temp_dir" >/dev/null 2>&1;then
+            if unzip "$archive_file" -d "$temp_dir" ;then
             success "The ZIP file does not require a password."
-                else
+            else
                 log "The ZIP file requires a password."
                 input "Please enter the password for the ZIP file: " zip_password
-                unzip "$archive_file" -P "$zip_password" -d "$temp_dir" >/dev/null 2>&1
+                unzip "$archive_file" -P "$zip_password" -d "$temp_dir" 
                 exit 1
                 fi
 
