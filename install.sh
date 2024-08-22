@@ -922,8 +922,8 @@ extract_and_copy_archive() {
 remove_old_archives() {
         print ""
         print "—————————————————————————————————————————————————————————————————————————"
-        input -p "Do you want to remove old archives? (y/n) " answer
-        
+        input "Do you want to remove old archives? (y/n) " answer
+
         local name=$1;
             if [ "$answer" == "y" ]; then
                 log "removing old archives"
