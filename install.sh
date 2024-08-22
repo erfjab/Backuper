@@ -920,15 +920,18 @@ extract_and_copy_archive() {
     success "Files from $archive_file have been successfully extracted and copied."
 }
 remove_old_archives() {
-read -p "Do you want to remove old archives? (y/n) " answer
-local name=$1;
-if [ "$answer" == "y" ]; then
-    log "removing old archives"
-    find /root/Restore/ -name "old-$name" -type d -exec rm -rf {} \;
-else
-    log "skipping removal of old archives"
-    success "You can find the extracted files in /root/Restore/old-$name"
-fi
+        print ""
+        print "—————————————————————————————————————————————————————————————————————————"
+        input -p "Do you want to remove old archives? (y/n) " answer
+        
+        local name=$1;
+            if [ "$answer" == "y" ]; then
+                log "removing old archives"
+                find /root/Restore/ -name "old-$name" -type d -exec rm -rf {} \;
+            else
+                log "skipping removal of old archives"
+                success "You can find the extracted files in /root/Restore/old-$name"
+            fi
 
 
 }
