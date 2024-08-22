@@ -867,7 +867,7 @@ extract_and_copy_archive() {
             echo "Handling ZIP file."
             if check_zip_password "$archive_file"; then
                 log "The ZIP file requires a password."
-                input -p "Please enter the password for the ZIP file: " zip_password
+                input "Please enter the password for the ZIP file: " zip_password
                 if ! unzip -P "$zip_password" "$archive_file" -d "$temp_dir" >/dev/null 2>&1; then
                 error "Error extracting ZIP file with the provided password."
                 exit 1
@@ -883,7 +883,7 @@ extract_and_copy_archive() {
             echo "Handling 7z file."
             if check_7z_password "$archive_file"; then
                 log "The 7z file requires a password."
-                input -p "Enter the password for the 7z file:" sevenz_password
+                input "Enter the password for the 7z file:" sevenz_password
                 if ! 7z x -p"$sevenz_password" "$archive_file" -o"$temp_dir" >/dev/null 2>&1; then
                     error "Failed to extract 7z file with the provided password."
                     exit 1
@@ -948,11 +948,11 @@ restore_menu() {
         print "1) Marzban Panel"
         print "0) Exit"
         print ""
-        input -n "Enter your option number: " option 
+        input "Enter your option number: " option 
         clear
         case $option in
             1)
-                input -p "Enter the path to the archive file (.zip or .7z): " archive_file
+                input  "Enter the path to the archive file (.zip or .7z): " archive_file
                 extract_and_copy_archive "$archive_file"
                 ;;
             0)
