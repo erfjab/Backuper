@@ -948,9 +948,8 @@ restore_menu() {
         print "1) Marzban Panel"
         print "0) Exit"
         print ""
-        input "Enter your option number: " option 
-        clear
-        case $option in
+        input "Enter your option number: " options 
+        case $options in
             1)
                 input  "Enter the path to the archive file (.zip or .7z): " archive_file
                 extract_and_copy_archive "$archive_file"
