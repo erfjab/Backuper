@@ -858,7 +858,7 @@ extract_and_copy_archive() {
     mkdir -p "$temp_dir"
 
     if [ ! -f "$archive_file" ]; then
-        echo "File $archive_file does not exist."
+        error "File $archive_file does not exist."
         exit 1
     fi
 
@@ -866,15 +866,15 @@ extract_and_copy_archive() {
         *.zip)
             echo "Handling ZIP file."
             if check_zip_password "$archive_file"; then
-                echo "The ZIP file requires a password."
+                log "The ZIP file requires a password."
                 read -p "Please enter the password for the ZIP file: " zip_password
                 if ! unzip -P "$zip_password" "$archive_file" -d "$temp_dir" >/dev/null 2>&1; then
-                echo "Error extracting ZIP file with the provided password."
+                error "Error extracting ZIP file with the provided password."
                 exit 1
                 fi
                 
             else
-                echo "The ZIP file does not require a password."
+                success "The ZIP file does not require a password."
                 unzip "$archive_file" -d "$temp_dir" >/dev/null 2>&1
 
             fi
@@ -882,20 +882,20 @@ extract_and_copy_archive() {
         *.7z)
             echo "Handling 7z file."
             if check_7z_password "$archive_file"; then
-                echo "The 7z file requires a password."
+                log "The 7z file requires a password."
                 read -p "Enter the password for the 7z file:" sevenz_password
                 if ! 7z x -p"$sevenz_password" "$archive_file" -o"$temp_dir" >/dev/null 2>&1; then
-                    echo "Failed to extract 7z file with the provided password."
+                    error "Failed to extract 7z file with the provided password."
                     exit 1
                 fi
             else
-                echo "The 7z file does not require a password."
+                success "The 7z file does not require a password."
                 7z x "$archive_file" -o"$temp_dir" >/dev/null 2>&1
 
             fi
             ;;
         *)
-            echo "Unsupported file format. Please provide a ZIP or 7z file."
+            error "Unsupported file format. Please provide a ZIP or 7z file."
             rm -rf "$temp_dir"
             exit 1
             ;;
@@ -908,47 +908,47 @@ extract_and_copy_archive() {
     fi
 
     # Copy files from the temporary extraction directory to system paths
-    echo "Copying files from temporary directory to system paths..."
+    log "Copying files from temporary directory to system paths..."
     cd "$temp_dir" || exit
     find . -type f | while read -r file; do
         target_path="/${file#./}"
-        echo "Copying file: $file to $target_path"
+        log "Copying file: $file to $target_path"
         mkdir -p "$(dirname "$target_path")"
         cp "$file" "$target_path"
     done
 
     find . -type d | while read -r dir; do
         target_path="/${dir#./}"
-        echo "Creating directory: $dir at $target_path"
+        log "Creating directory: $dir at $target_path"
         mkdir -p "$target_path"
     done
 
     # Remove temporary directory
     remove_old_archives "$base_name"
-    echo "Files from $archive_file have been successfully extracted and copied."
+    success "Files from $archive_file have been successfully extracted and copied."
 }
 remove_old_archives() {
 read -p "Do you want to remove old archives? (y/n) " answer
 local name=$1;
 if [ "$answer" == "y" ]; then
-    echo "removing old archives"
+    log "removing old archives"
     find /root/Restore/ -name "old-$name" -type d -exec rm -rf {} \;
 else
-    echo "skipping removal of old archives"
-    echo "You can find the extracted files in /root/Restore/old-$name"
+    log "skipping removal of old archives"
+    success "You can find the extracted files in /root/Restore/old-$name"
 fi
 
 
 }
 # Main function for the menu and extraction option
-menu() {
+restore_menu() {
     while true; do
-        echo "\n\t Select an option:"
-        echo "—————————————————————————————————————————————————————————————————————————"
-        echo "1) Marzban Panel"
-        echo "0) Exit"
-        echo ""
-        echo -n "Enter your option number: "
+        print "\n\t Select an option:"
+        print "—————————————————————————————————————————————————————————————————————————"
+        print "1) Marzban Panel"
+        print "0) Exit"
+        print ""
+        print -n "Enter your option number: "
         read option
         clear
         case $option in
@@ -957,18 +957,18 @@ menu() {
                 extract_and_copy_archive "$archive_file"
                 ;;
             0)
-                echo "Thank you for using the Backup Utility. Goodbye!"
+                success "Thank you for using the Backup Utility. Goodbye!"
                 exit 0
                 ;;
             *)
-                echo "Invalid option, Please select a valid option!"
+                error "Invalid option, Please select a valid option!"
                 ;;
         esac
     done
 }
 
 # Run the menu
-menu
+restore_menu
 
 
 }
