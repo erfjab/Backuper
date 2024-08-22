@@ -824,7 +824,9 @@ check_zip_password() {
 crypted=$( 7z l -slt -- $zip_file | grep -i -c "Encrypted = +" )
 if [ "$crypted" -eq "1" ]; then
     return 1
+    log "The ZIP file requires a password."
 else
+    log "The ZIP file requires a password."
     return 0
 fi
 }
@@ -864,12 +866,12 @@ extract_and_copy_archive() {
 
     case "$archive_file" in
         *.zip)
-            echo "Handling ZIP file."
+            print "Handling ZIP file."
             if check_zip_password "$archive_file"; then
                 log "The ZIP file requires a password."
                 input "Please enter the password for the ZIP file: " zip_password
                 if ! unzip -P "$zip_password" "$archive_file" -d "$temp_dir" >/dev/null 2>&1; then
-                error "Error extracting ZIP file with the provided password."
+                error "Error extracting ZIP file with the provided password.Maybe password is incorrect."
                 exit 1
                 fi
                 
@@ -880,9 +882,9 @@ extract_and_copy_archive() {
             fi
             ;;
         *.7z)
-            echo "Handling 7z file."
+            log "Handling 7z file..."
             if check_7z_password "$archive_file"; then
-                log "The 7z file requires a password."
+                log "The 7z file requires a password :)"
                 input "Enter the password for the 7z file:" sevenz_password
                 if ! 7z x -p"$sevenz_password" "$archive_file" -o"$temp_dir" >/dev/null 2>&1; then
                     error "Failed to extract 7z file with the provided password."
