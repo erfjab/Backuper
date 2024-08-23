@@ -100,7 +100,7 @@ check_needs() {
 menu() {
     while true; do
         print "\n\t Welcome to Backuper!"
-        print "\t\t version x.5.0 by @ErfJab"
+        print "\t\t version x.6.0 by @ErfJab"
         print "—————————————————————————————————————————————————————————————————————————"
         print "1) Install"
         print "2) Manage"
@@ -880,10 +880,10 @@ seven_zip_copy(){
                 log "_____________________________________________________"
                 print "File '$file' has an extension of '.$extension'."
                 log "Default directory for this file is: $default_dir"
-                input -rp "Enter target directory (or press Enter to use default): " target_dir
+                input "Enter target directory (or press Enter to use default): " target_dir
                 target_dir="${target_dir:-$default_dir}"
             else
-                input -rp "Enter target directory for file '$file': " target_dir
+                input "Enter target directory for file '$file': " target_dir
             fi
 
             # Validate the target directory
@@ -896,7 +896,8 @@ seven_zip_copy(){
             fi
         fi
     done
-
+    print ""
+    print ""
     success "Files have been successfully copied."
 }
 
