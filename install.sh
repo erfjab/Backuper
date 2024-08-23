@@ -873,30 +873,31 @@ seven_zip_copy(){
                 *)
                     default_dir=""
                     ;;
-            esac
+            esacs
 
             # Ask user for target directory
             if [ -n "$default_dir" ]; then
-                echo "File '$file' has an extension of '.$extension'."
-                echo "Default directory for this file is: $default_dir"
-                read -rp "Enter target directory (or press Enter to use default): " target_dir
+                log "_____________________________________________________"
+                print "File '$file' has an extension of '.$extension'."
+                log "Default directory for this file is: $default_dir"
+                input -rp "Enter target directory (or press Enter to use default): " target_dir
                 target_dir="${target_dir:-$default_dir}"
             else
-                read -rp "Enter target directory for file '$file': " target_dir
+                input -rp "Enter target directory for file '$file': " target_dir
             fi
 
             # Validate the target directory
             if [ -n "$target_dir" ]; then
                 mkdir -p "$target_dir"  # Create the directory if it doesn't exist
                 cp "$file" "$target_dir"
-                echo "Copied '$file' to '$target_dir'."
+                success "Copied '$file' to '$target_dir'."
             else
-                echo "No target directory specified for '$file'."
+                error "No target directory specified for '$file'."
             fi
         fi
     done
 
-    echo "Files have been successfully copied."
+    success "Files have been successfully copied."
 }
 
 
