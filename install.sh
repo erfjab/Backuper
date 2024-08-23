@@ -1,5 +1,4 @@
 #!/bin/bash
-
 colors=( "\033[1;31m" "\033[1;35m" "\033[1;92m" "\033[38;5;46m" "\033[1;38;5;208m" "\033[1;36m" "\033[0m" )
 red=${colors[0]} pink=${colors[1]} green=${colors[2]} spring=${colors[3]} orange=${colors[4]} cyan=${colors[5]} reset=${colors[6]}
 print() { echo -e "${cyan}$1${reset}"; }
@@ -817,63 +816,6 @@ EOL
 
 #Restore backup
 restore_backup() {
-
-# Function to extract and copy files from the archive to the correct system paths
-extract_and_copy_archive() {
-    local archive_file="$1"
-    local base_name
-    local temp_dir
-    local sevenz_password
-    local zip_password
-
-    # Extract base name without extension
-    base_name=$(basename "$archive_file" | sed 's/\.[^.]*$//')
-    temp_dir="/root/Restore/old-$base_name"
-
-    # Ensure temp directory is clean
-    rm -rf "$temp_dir"
-    mkdir -p "$temp_dir"
-
-    if [ ! -f "$archive_file" ]; then
-        error "File $archive_file does not exist."
-        exit 1
-    fi
-
-    case "$archive_file" in
-        *.zip)
-            print "Handling ZIP file."
-            if unzip "$archive_file" -d "$temp_dir"; then
-                success "Unzipping completed successfully."
-                zip_copy "$temp_dir"
-            else
-                error "Failed to unzip the file." >&2
-                exit 1
-            fi
-            ;;
-        *.7z.001)
-            log "Handling 7z file..."
-            
-            if 7z x "$archive_file" -o"$temp_dir"; then
-            seven_zip_copy "$temp_dir"
-                success "Unzipping completed successfully."
-            else
-                error "Failed to unzip the file." >&2
-                exit 1
-            fi
-            ;;
-        *)
-            error "Unsupported file format. Please provide a ZIP or 7z file."
-            rm -rf "$temp_dir"
-            exit 1
-            ;;
-    esac
-
-    if [ $? -ne 0 ]; then
-        echo "Failed to extract $archive_file. Please check the password and try again."
-        rm -rf "$temp_dir"
-        exit 1
-    fi
-
     zip_copy(){
             # Copy files from the temporary extraction directory to system paths
             log "Copying files from temporary directory to system paths..."
@@ -946,15 +888,72 @@ extract_and_copy_archive() {
 
             success "Files have been successfully copied."
                 }
+
+# Function to extract and copy files from the archive to the correct system paths
+extract_and_copy_archive() {
+    local archive_file="$1"
+    local base_name
+    local temp_dir
+    local sevenz_password
+    local zip_password
+
+    # Extract base name without extension
+    base_name=$(basename "$archive_file" | sed 's/\.[^.]*$//')
+    temp_dir="/root/Restore/old-$base_name"
+
+    # Ensure temp directory is clean
+    rm -rf "$temp_dir"
+    mkdir -p "$temp_dir"
+
+    if [ ! -f "$archive_file" ]; then
+        error "File $archive_file does not exist."
+        exit 1
+    fi
+
+    case "$archive_file" in
+        *.zip)
+            print "Handling ZIP file."
+            if unzip "$archive_file" -d "$temp_dir"; then
+                success "Unzipping completed successfully."
+                zip_copy "$temp_dir"
+            else
+                error "Failed to unzip the file." >&2
+                exit 1
+            fi
+            ;;
+        *.7z.001)
+            log "Handling 7z file..."
+            
+            if 7z x "$archive_file" -o"$temp_dir"; then
+            seven_zip_copy "$temp_dir"
+            success "Unzipping completed successfully."
+            else
+                error "Failed to unzip the file." >&2
+                exit 1
+            fi
+            ;;
+        *)
+            error "Unsupported file format. Please provide a ZIP or 7z file."
+            rm -rf "$temp_dir"
+            exit 1
+            ;;
+    esac
+
+    if [ $? -ne 0 ]; then
+        echo "Failed to extract $archive_file. Please check the password and try again."
+        rm -rf "$temp_dir"
+        exit 1
+    fi
+
+
     
 
-            
-                        }
+     }
 
 
 remove_old_archives() {
         print ""
-        print "—————————————————————————————————————————————————————————————————————————"
+        print "—————————————————————————————v1————————————————————————————————————————————"
         print ""
         input "Do you want to remove old archives? (yes/no)( Default: no ) : " answer
         local name=$1;
