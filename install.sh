@@ -873,7 +873,7 @@ seven_zip_copy(){
                 *)
                     default_dir=""
                     ;;
-            esacs
+            esac
 
             # Ask user for target directory
             if [ -n "$default_dir" ]; then
