@@ -844,12 +844,13 @@ extract_and_copy_archive() {
             print "Handling ZIP file."
             if unzip "$archive_file" -d "$temp_dir"; then
                 success "Unzipping completed successfully."
+                zip_file_copy
             else
                 error "Failed to unzip the file." >&2
                 exit 1
             fi
             ;;
-        *.7z.*)
+        *.7z.001)
             log "Handling 7z file..."
             
             if 7z x "$archive_file" -o"$temp_dir"; then
@@ -872,6 +873,8 @@ extract_and_copy_archive() {
         exit 1
     fi
 
+zip_file_copy(){
+
     # Copy files from the temporary extraction directory to system paths
     log "Copying files from temporary directory to system paths..."
     cd "$temp_dir" || exit
@@ -892,6 +895,61 @@ extract_and_copy_archive() {
 
     success "Files from $archive_file have been successfully extracted and copied."
 }
+
+
+7zip_file_copy(){
+
+    local temp_dir="$1"  # Temporary directory
+    local default_dirs=(
+        [".yml"]="/opt/marzban/"
+        [".env"]="/opt/marzban/"
+        [".sqlite3"]="/var/lib/marzban/"
+        [".json"]="/var/lib/marzban/"
+    )
+    
+    # Ensure we are in the temporary directory
+    cd "$temp_dir" || { echo "Failed to access temporary directory."; exit 1; }
+
+    for file in *; do
+        if [ -f "$file" ]; then
+            # Get the file extension
+            extension="${file##*.}"
+            case ".$extension" in
+                ".yml" | ".env" | ".sqlite3" | ".json")
+                    default_dir="${default_dirs[.$extension]}"
+                    ;;
+                *)
+                    default_dir=""
+                    ;;
+            esac
+
+            # Ask user for target directory
+            if [ -n "$default_dir" ]; then
+                log "File '$file' has an extension of '.$extension'."
+                print "Default directory for this file is: $default_dir"
+                input -rp "Enter target directory (or press Enter to use default): " target_dir
+                target_dir="${target_dir:-$default_dir}"
+            else
+                input -rp "Enter target directory for file '$file': " target_dir
+            fi
+
+            # Validate the target directory
+            if [ -n "$target_dir" ]; then
+                mkdir -p "$target_dir"  # Create the directory if it doesn't exist
+                cp "$file" "$target_dir"
+                success "Copied '$file' to '$target_dir'."
+            else
+                error "No target directory specified for '$file'."
+            fi
+        fi
+    done
+
+    success "Files have been successfully copied."
+                }
+    
+
+            
+        }
 remove_old_archives() {
         print ""
         print "—————————————————————————————————————————————————————————————————————————"
