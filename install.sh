@@ -935,6 +935,7 @@ restore_menu() {
 }
 
 # Run the menu
+check_needs
 restore_menu
 
 
