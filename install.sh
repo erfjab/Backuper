@@ -100,7 +100,7 @@ check_needs() {
 menu() {
     while true; do
         print "\n\t Welcome to Backuper!"
-        print "\t\t version x.3.0 by @ErfJab"
+        print "\t\t version x.4.0 by @ErfJab"
         print "—————————————————————————————————————————————————————————————————————————"
         print "1) Install"
         print "2) Manage"
@@ -816,6 +816,7 @@ EOL
 
 #Restore backup
 restore_backup() {
+
     zip_copy(){
             # Copy files from the temporary extraction directory to system paths
             log "Copying files from temporary directory to system paths..."
@@ -840,54 +841,64 @@ restore_backup() {
                 }
 
 
-    seven_zip_copy(){
-            local temp_dir="$1"  # Temporary directory
-            local default_dirs=(
-                [".yml"]="/opt/marzban/"
-                [".env"]="/opt/marzban/"
-                [".sqlite3"]="/var/lib/marzban/"
-                [".json"]="/var/lib/marzban/"
-            )
-            
-            # Ensure we are in the temporary directory
-            cd "$temp_dir" || { echo "Failed to access temporary directory."; exit 1; }
+seven_zip_copy(){
+    local temp_dir="$1"  # Temporary directory
 
-            for file in *; do
-                if [ -f "$file" ]; then
-                    # Get the file extension
-                    extension="${file##*.}"
-                    case ".$extension" in
-                        ".yml" | ".env" | ".sqlite3" | ".json")
-                            default_dir="${default_dirs[.$extension]}"
-                            ;;
-                        *)
-                            default_dir=""
-                            ;;
-                    esac
+    # Define default directories based on file extension
+    local default_yml_dir="/opt/marzban/"
+    local default_env_dir="/opt/marzban/"
+    local default_sqlite3_dir="/var/lib/marzban/"
+    local default_json_dir="/var/lib/marzban/"
 
-                    # Ask user for target directory
-                    if [ -n "$default_dir" ]; then
-                        log "File '$file' has an extension of '.$extension'."
-                        print "Default directory for this file is: $default_dir"
-                        input -rp "Enter target directory (or press Enter to use default): " target_dir
-                        target_dir="${target_dir:-$default_dir}"
-                    else
-                        input -rp "Enter target directory for file '$file': " target_dir
-                    fi
+    # Ensure we are in the temporary directory
+    cd "$temp_dir" || { echo "Failed to access temporary directory."; exit 1; }
 
-                    # Validate the target directory
-                    if [ -n "$target_dir" ]; then
-                        mkdir -p "$target_dir"  # Create the directory if it doesn't exist
-                        cp "$file" "$target_dir"
-                        success "Copied '$file' to '$target_dir'."
-                    else
-                        error "No target directory specified for '$file'."
-                    fi
-                fi
-            done
+    for file in *; do
+        if [ -f "$file" ]; then
+            # Get the file extension
+            extension="${file##*.}"
+            case ".$extension" in
+                ".yml")
+                    default_dir="$default_yml_dir"
+                    ;;
+                ".env")
+                    default_dir="$default_env_dir"
+                    ;;
+                ".sqlite3")
+                    default_dir="$default_sqlite3_dir"
+                    ;;
+                ".json")
+                    default_dir="$default_json_dir"
+                    ;;
+                *)
+                    default_dir=""
+                    ;;
+            esac
 
-            success "Files have been successfully copied."
-                }
+            # Ask user for target directory
+            if [ -n "$default_dir" ]; then
+                echo "File '$file' has an extension of '.$extension'."
+                echo "Default directory for this file is: $default_dir"
+                read -rp "Enter target directory (or press Enter to use default): " target_dir
+                target_dir="${target_dir:-$default_dir}"
+            else
+                read -rp "Enter target directory for file '$file': " target_dir
+            fi
+
+            # Validate the target directory
+            if [ -n "$target_dir" ]; then
+                mkdir -p "$target_dir"  # Create the directory if it doesn't exist
+                cp "$file" "$target_dir"
+                echo "Copied '$file' to '$target_dir'."
+            else
+                echo "No target directory specified for '$file'."
+            fi
+        fi
+    done
+
+    echo "Files have been successfully copied."
+}
+
 
 # Function to extract and copy files from the archive to the correct system paths
 extract_and_copy_archive() {
@@ -925,7 +936,9 @@ extract_and_copy_archive() {
             log "Handling 7z file..."
             
             if 7z x "$archive_file" -o"$temp_dir"; then
+
             seven_zip_copy "$temp_dir"
+
             success "Unzipping completed successfully."
             else
                 error "Failed to unzip the file." >&2
@@ -998,7 +1011,7 @@ restore_menu() {
 # Run the menu
  check_needs
 restore_menu
-
+remove_old_archives
 
 }
 
