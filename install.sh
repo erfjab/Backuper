@@ -818,31 +818,6 @@ EOL
 #Restore backup
 restore_backup() {
  
-#Check zip file requires a password or not
-check_zip_password() {
-    local zip_file="$1"
-crypted=$( 7z l -slt -- $zip_file | grep -i -c "Encrypted = +" )
-if [ "$crypted" -eq "1" ]; then
-    return 1
-    log "The ZIP file requires a password."
-else
-    log "The ZIP file requires a password."
-    return 0
-fi
-}
-
-#Check 7z file requires a password or not
-check_7z_password() {
-    local 7z_file="$1"
-    crypted=$( 7z l -slt -- $7z_file | grep -i -c "Encrypted = +" )
-    if [ "$crypted" -eq "1" ]; then
-        return 1
-    else
-        return 0
-    fi
-
-}
-
 # Function to extract and copy files from the archive to the correct system paths
 extract_and_copy_archive() {
     local archive_file="$1"
@@ -873,8 +848,6 @@ extract_and_copy_archive() {
                 error "Failed to unzip the file." >&2
                 exit 1
             fi
-
-
             ;;
         *.7z)
             log "Handling 7z file..."
@@ -922,8 +895,8 @@ extract_and_copy_archive() {
 remove_old_archives() {
         print ""
         print "—————————————————————————————————————————————————————————————————————————"
-        input "Do you want to remove old archives? (y/n) " answer
-
+        print ""
+        input "Do you want to remove old archives? (y/n)(Default: n) :" answer
         local name=$1;
             if [ "$answer" == "y" ]; then
                 log "removing old archives"
@@ -948,6 +921,7 @@ restore_menu() {
             1)
                 input  "Enter the path to the archive file (.zip or .7z): " archive_file
                 extract_and_copy_archive "$archive_file"
+                marzban restart
                 ;;
             0)
                 success "Thank you for using the Backup Utility. Goodbye!"
@@ -972,5 +946,5 @@ run() {
     clear
     menu
 }
-#hi
+
 run
