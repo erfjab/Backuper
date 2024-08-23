@@ -996,7 +996,6 @@ restore_menu() {
             1)
                 input  "Enter the path to the archive file (.zip or .7z): " archive_file
                 extract_and_copy_archive "$archive_file"
-                marzban restart
                 ;;
             0)
                 success "Thank you for using the Backup Utility. Goodbye!"
@@ -1013,7 +1012,7 @@ restore_menu() {
  check_needs
 restore_menu
 remove_old_archives
-
+marzban restart
 }
 
 
