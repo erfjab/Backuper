@@ -844,7 +844,7 @@ extract_and_copy_archive() {
             print "Handling ZIP file."
             if unzip "$archive_file" -d "$temp_dir"; then
                 success "Unzipping completed successfully."
-                zip_file_copy
+                zip_file_copy "$temp_dir"
             else
                 error "Failed to unzip the file." >&2
                 exit 1
@@ -854,6 +854,7 @@ extract_and_copy_archive() {
             log "Handling 7z file..."
             
             if 7z x "$archive_file" -o"$temp_dir"; then
+            zip7_file_copy "$temp_dir"
                 success "Unzipping completed successfully."
             else
                 error "Failed to unzip the file." >&2
@@ -873,83 +874,84 @@ extract_and_copy_archive() {
         exit 1
     fi
 
-zip_file_copy(){
+    zip_file_copy(){
+            # Copy files from the temporary extraction directory to system paths
+            log "Copying files from temporary directory to system paths..."
+            local temp_dir="$1"
+            cd "$temp_dir" || exit
+            find . -type f | while read -r file; do
+                target_path="/${file#./}"
+                log "Copying file: $file to $target_path"
+                mkdir -p "$(dirname "$target_path")"
+                cp "$file" "$target_path"
+            done
 
-    # Copy files from the temporary extraction directory to system paths
-    log "Copying files from temporary directory to system paths..."
-    cd "$temp_dir" || exit
-    find . -type f | while read -r file; do
-        target_path="/${file#./}"
-        log "Copying file: $file to $target_path"
-        mkdir -p "$(dirname "$target_path")"
-        cp "$file" "$target_path"
-    done
+            find . -type d | while read -r dir; do
+                target_path="/${dir#./}"
+                log "Creating directory: $dir at $target_path"
+                mkdir -p "$target_path"
+            done
 
-    find . -type d | while read -r dir; do
-        target_path="/${dir#./}"
-        log "Creating directory: $dir at $target_path"
-        mkdir -p "$target_path"
-    done
+            # Remove temporary directory
 
-    # Remove temporary directory
-
-    success "Files from $archive_file have been successfully extracted and copied."
-}
+            success "Files from $archive_file have been successfully extracted and copied."
+                }
 
 
-7zip_file_copy(){
+    zip7_file_copy(){
+            local temp_dir="$1"  # Temporary directory
+            local default_dirs=(
+                [".yml"]="/opt/marzban/"
+                [".env"]="/opt/marzban/"
+                [".sqlite3"]="/var/lib/marzban/"
+                [".json"]="/var/lib/marzban/"
+            )
+            
+            # Ensure we are in the temporary directory
+            cd "$temp_dir" || { echo "Failed to access temporary directory."; exit 1; }
 
-    local temp_dir="$1"  # Temporary directory
-    local default_dirs=(
-        [".yml"]="/opt/marzban/"
-        [".env"]="/opt/marzban/"
-        [".sqlite3"]="/var/lib/marzban/"
-        [".json"]="/var/lib/marzban/"
-    )
-    
-    # Ensure we are in the temporary directory
-    cd "$temp_dir" || { echo "Failed to access temporary directory."; exit 1; }
+            for file in *; do
+                if [ -f "$file" ]; then
+                    # Get the file extension
+                    extension="${file##*.}"
+                    case ".$extension" in
+                        ".yml" | ".env" | ".sqlite3" | ".json")
+                            default_dir="${default_dirs[.$extension]}"
+                            ;;
+                        *)
+                            default_dir=""
+                            ;;
+                    esac
 
-    for file in *; do
-        if [ -f "$file" ]; then
-            # Get the file extension
-            extension="${file##*.}"
-            case ".$extension" in
-                ".yml" | ".env" | ".sqlite3" | ".json")
-                    default_dir="${default_dirs[.$extension]}"
-                    ;;
-                *)
-                    default_dir=""
-                    ;;
-            esac
+                    # Ask user for target directory
+                    if [ -n "$default_dir" ]; then
+                        log "File '$file' has an extension of '.$extension'."
+                        print "Default directory for this file is: $default_dir"
+                        input -rp "Enter target directory (or press Enter to use default): " target_dir
+                        target_dir="${target_dir:-$default_dir}"
+                    else
+                        input -rp "Enter target directory for file '$file': " target_dir
+                    fi
 
-            # Ask user for target directory
-            if [ -n "$default_dir" ]; then
-                log "File '$file' has an extension of '.$extension'."
-                print "Default directory for this file is: $default_dir"
-                input -rp "Enter target directory (or press Enter to use default): " target_dir
-                target_dir="${target_dir:-$default_dir}"
-            else
-                input -rp "Enter target directory for file '$file': " target_dir
-            fi
+                    # Validate the target directory
+                    if [ -n "$target_dir" ]; then
+                        mkdir -p "$target_dir"  # Create the directory if it doesn't exist
+                        cp "$file" "$target_dir"
+                        success "Copied '$file' to '$target_dir'."
+                    else
+                        error "No target directory specified for '$file'."
+                    fi
+                fi
+            done
 
-            # Validate the target directory
-            if [ -n "$target_dir" ]; then
-                mkdir -p "$target_dir"  # Create the directory if it doesn't exist
-                cp "$file" "$target_dir"
-                success "Copied '$file' to '$target_dir'."
-            else
-                error "No target directory specified for '$file'."
-            fi
-        fi
-    done
-
-    success "Files have been successfully copied."
+            success "Files have been successfully copied."
                 }
     
 
             
-        }
+                        }
+
+
 remove_old_archives() {
         print ""
         print "—————————————————————————————————————————————————————————————————————————"
@@ -965,7 +967,9 @@ remove_old_archives() {
             fi
 
 
-}
+                    }
+
+
 # Main function for the menu and extraction option
 restore_menu() {
     while true; do
