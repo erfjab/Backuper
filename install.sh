@@ -100,7 +100,7 @@ check_needs() {
 menu() {
     while true; do
         print "\n\t Welcome to Backuper!"
-        print "\t\t version 0.2.0 by @ErfJab"
+        print "\t\t version x.3.0 by @ErfJab"
         print "—————————————————————————————————————————————————————————————————————————"
         print "1) Install"
         print "2) Manage"
@@ -953,7 +953,7 @@ extract_and_copy_archive() {
 
 remove_old_archives() {
         print ""
-        print "—————————————————————————————v1————————————————————————————————————————————"
+        print "————————————————————————————————————————————————————————————————————————"
         print ""
         input "Do you want to remove old archives? (yes/no)( Default: no ) : " answer
         local name=$1;
