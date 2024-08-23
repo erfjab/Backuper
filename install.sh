@@ -100,7 +100,7 @@ check_needs() {
 menu() {
     while true; do
         print "\n\t Welcome to Backuper!"
-        print "\t\t version x.6.0 by @ErfJab"
+        print "\t\t version 0.2.0 by @ErfJab"
         print "—————————————————————————————————————————————————————————————————————————"
         print "1) Install"
         print "2) Manage"
@@ -938,10 +938,9 @@ extract_and_copy_archive() {
             log "Handling 7z file..."
             
             if 7z x "$archive_file" -o"$temp_dir"; then
-
+            success "Unzipping completed successfully."
             seven_zip_copy "$temp_dir"
 
-            success "Unzipping completed successfully."
             else
                 error "Failed to unzip the file." >&2
                 exit 1
