@@ -817,7 +817,7 @@ EOL
 
 #Restore backup
 restore_backup() {
- 
+
 # Function to extract and copy files from the archive to the correct system paths
 extract_and_copy_archive() {
     local archive_file="$1"
@@ -849,7 +849,7 @@ extract_and_copy_archive() {
                 exit 1
             fi
             ;;
-        *.7z)
+        *.7z.*)
             log "Handling 7z file..."
             
             if 7z x "$archive_file" -o"$temp_dir"; then
@@ -889,14 +889,14 @@ extract_and_copy_archive() {
     done
 
     # Remove temporary directory
-    remove_old_archives "$base_name"
+
     success "Files from $archive_file have been successfully extracted and copied."
 }
 remove_old_archives() {
         print ""
         print "—————————————————————————————————————————————————————————————————————————"
         print ""
-        input "Do you want to remove old archives? (y/n)(Default: n) :" answer
+        input "Do you want to remove old archives? (yes/no)( Default: no ) : " answer
         local name=$1;
             if [ "$answer" == "y" ]; then
                 log "removing old archives"
@@ -935,7 +935,7 @@ restore_menu() {
 }
 
 # Run the menu
-check_needs
+ check_needs
 restore_menu
 
 
