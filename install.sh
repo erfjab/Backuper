@@ -844,7 +844,7 @@ extract_and_copy_archive() {
             print "Handling ZIP file."
             if unzip "$archive_file" -d "$temp_dir"; then
                 success "Unzipping completed successfully."
-                zip_file_copy "$temp_dir"
+                zip_copy "$temp_dir"
             else
                 error "Failed to unzip the file." >&2
                 exit 1
@@ -854,7 +854,7 @@ extract_and_copy_archive() {
             log "Handling 7z file..."
             
             if 7z x "$archive_file" -o"$temp_dir"; then
-            zip7_file_copy "$temp_dir"
+            seven_zip_copy "$temp_dir"
                 success "Unzipping completed successfully."
             else
                 error "Failed to unzip the file." >&2
@@ -874,7 +874,7 @@ extract_and_copy_archive() {
         exit 1
     fi
 
-    zip_file_copy(){
+    zip_copy(){
             # Copy files from the temporary extraction directory to system paths
             log "Copying files from temporary directory to system paths..."
             local temp_dir="$1"
@@ -898,7 +898,7 @@ extract_and_copy_archive() {
                 }
 
 
-    zip7_file_copy(){
+    seven_zip_copy(){
             local temp_dir="$1"  # Temporary directory
             local default_dirs=(
                 [".yml"]="/opt/marzban/"
