@@ -360,7 +360,7 @@ marzban_template() {
 xui_template() {
     log "Checking x-ui db..."
     directories=()
-    local db_path="/etc/x-ui/x-ui.db"
+    local db_path="/root/x-ui/x-ui.db"
     if [ ! -f "$db_path" ]; then
         error "Database file not found: $db_path"
         exit 1
@@ -371,7 +371,7 @@ xui_template() {
 
     log "Adding directories for x-ui"
     
-    local xui_directory="/etc/x-ui"
+    local xui_directory="/root/x-ui"
     mapfile -t items < <(find "$xui_directory" -mindepth 1 -maxdepth 1 -type d)
     for item in "${items[@]}"; do
         success "$item"
