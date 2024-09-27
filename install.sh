@@ -304,7 +304,11 @@ marzban_template() {
             success "Service: $service"
             success "Env file: $env_file"
             success "Volumes: $volumes"
+            print ""
+            sleep 1
             success "Database type: $db_type"
+            print ""
+            sleep 1
             success "Database name: $db_name"
             service_info["$service"]="${service}:${volumes}"
 
@@ -390,7 +394,6 @@ backup_custom_dir() {
     print "Add custom directories or files to the backup (e.g., /etc/haproxy or /root/ErfJab/holderbot.db)."
     
     while true; do
-        sleep 1
         print "\nCurrent directories:"
         for dir in "${directories[@]}"; do
             [[ -n "$dir" ]] && success "\t- $dir"
@@ -468,6 +471,7 @@ backup_caption() {
         success "No caption provided. Skipping..."
         caption=""
     else
+        caption+='\n'
         success "Caption set: $caption"
     fi
 
@@ -560,7 +564,7 @@ send_to_telegram() {
             error "Invalid chat ID format!"
         else
             log "Checking Telegram bot..."
-            response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "https://api.telegram.org/bot$bot_token/sendMessage" -d chat_id="$chat_id" -d text="Hi Bro! (test bot)")
+            response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "https://api.telegram.org/bot$bot_token/sendMessage" -d chat_id="$chat_id" -d text="Backuper Test Message!")
             if [[ "$response" -ne 200 ]]; then
                 error "Invalid bot token or chat ID, or Telegram API error!"
             else
@@ -583,11 +587,11 @@ send_to_discord() {
         input "Enter the webhook URL: " webhook_url
         if [[ -z "$webhook_url" ]]; then
             error "Webhook URL cannot be empty!"
-        elif [[ ! "$webhook_url" =~ ^https://discord.com/api/webhooks/[0-9]+/[a-zA-Z0-9_-]+$ ]]; then
+        elif [[ ! "$webhook_url" =~ ^https://discord(app)?\.com/api/webhooks/[0-9]+/[a-zA-Z0-9_-]+$ ]]; then
             error "Invalid webhook URL format!"
         else
             log "Checking Discord webhook..."
-            response=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" -d '{"content": "Hi Bro! (test message)"}' "$webhook_url")
+            response=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" -d '{"content": "Backuper Test Message!"}' "$webhook_url")
             if [[ "$response" -ne 204 ]]; then
                 error "Invalid webhook URL or Discord API error!"
             else
@@ -708,6 +712,7 @@ if ! marzban logs --no-follow > \"marzban_logs_backuper.log\"; then
 fi
 "
         directories+=("marzban_logs_backuper.log")
+        rm_commands='rm -f *\"_backuper.log\"'
     fi
 
     local COMMANDS=""
@@ -720,16 +725,21 @@ if ! bash /opt/hiddify-manager/hiddify-panel/backup.sh;then
 fi
 "
         directories+=("/opt/hiddify-manager/hiddify-panel/backup/*.json")
+        rm_commands='rm -f "/opt/hiddify-manager/hiddify-panel/backup/"*'
     fi
 
     local send_file_command
     local send_notification_command
     if [ "$send_to_option" == "1" ]; then  # Telegram
-        send_file_command="curl -s -F \"chat_id=$chat_id\" -F \"document=@\$file_to_send\" -F \"caption=\$caption\" \"https://api.telegram.org/bot$bot_token/sendDocument\""
-        send_notification_command="curl -s -X POST \"https://api.telegram.org/bot$bot_token/sendMessage\" -d \"chat_id=$chat_id\" -d \"text=\$message\""
+        send_file_command="curl -s -F \"chat_id=$chat_id\" -F \"document=@\$file_to_send\" -F \"caption=\$caption\" -F \"parse_mode=HTML\" \"https://api.telegram.org/bot$bot_token/sendDocument\""
+        send_notification_command="curl -s -X POST \"https://api.telegram.org/bot$bot_token/sendMessage\" -d \"chat_id=$chat_id\" -d \"text=\$message\" -d \"parse_mode=HTML\""
+        CAPTION_TEXT="${caption} 
+📦 From <code>\${ip}</code> 
+⚡️ Develop by <b>@ErfJabs</b>"
     elif [ "$send_to_option" == "2" ]; then  # Discord
-        send_file_command="curl -s -H \"Content-Type: multipart/form-data\" -F \"payload_json={\\\"content\\\":\"\$caption\"}\" -F \"file=@\$file_to_send\" \"$webhook_url\""
-        send_notification_command="curl -s -H \"Content-Type: application/json\" -X POST -d \"{\\\"content\\\": \"\$message\"}\" \"$webhook_url\""
+        send_file_command="curl -v -H 'Content-Type: multipart/form-data' -F \"payload_json={\\\"content\\\":\\\"\$caption\\\"}\" -F \"file=@\$file_to_send\" \"$webhook_url\""
+        send_notification_command="curl -s -H 'Content-Type: application/json' -X POST -d '{\"content\": \"\$message\"}' \"$webhook_url\""
+        CAPTION_TEXT="${caption} 📦 from \${ip}\n⚡️ Develop by **[@ErfJabs](<https://t.me/ErfJabs>)**"
     fi
 
     cat <<EOL > "$backup_script"
@@ -739,10 +749,7 @@ ip=\$(hostname -I | awk '{print \$1}')
 timestamp=\$(TZ='Asia/Tehran' date +%m%d-%H%M)
 base_name="/root/${name}_\${timestamp}."
 backup_name="/root/${name}_\${timestamp}${compression_ext}"
-caption="$caption
-
-📦  from \$ip
-⚡️  by @ErfJabs"
+caption="${CAPTION_TEXT}"
 
 rm -f "\$backup_name"*
 
@@ -754,31 +761,35 @@ $(echo -e "$COMMANDS")
 
 if ! $compression_full_cmd "\$backup_name" ${directories[@]}; then
     message="Failed to compress files. Please check the server."
+    echo "\$message"
     $send_notification_command
     exit 1
 fi
 
 if ls \${base_name}* > /dev/null 2>&1; then
     for file_to_send in \${base_name}*; do
+        echo "Sending file: \$file_to_send"
         if $send_file_command; then
-            echo "Backup part sent successfully: $file_to_send"
+            echo "Backup part sent successfully: \$file_to_send"
         else
-            message="Failed to send backup part: $file_to_send. Please check the server."
+            message="Failed to send backup part: \$file_to_send. Please check the server."
+            echo "\$message"
             $send_notification_command
             exit 1
         fi
     done
     echo "All backup parts sent successfully"
 else
-    message="Backup file not found: $base_name. Please check the server."
+    message="Backup file not found: \$base_name. Please check the server."
+    echo "\$message"
     $send_notification_command
     exit 1
 fi
 
 rm -f "\$base_name"*
 rm -f *"_backuper.sql"
-rm -f *"_backuper.log"
-rm -f "/opt/hiddify-manager/hiddify-panel/backup/"*
+$(echo -e "$rm_commands")
+
 EOL
 
     chmod +x "$backup_script"
