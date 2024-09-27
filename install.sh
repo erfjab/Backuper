@@ -172,30 +172,6 @@ manage_backups() {
     clear
 }
 
-select_start_backup_type() {
-    clear
-    print "[TYPE]\n"
-    print "We offer two types of backup installers:\n"
-    print "1) Advanced - For more customization options."
-    print "2) Simple - For a quick and easy setup.\n"
-
-    while true; do
-        input "Enter your option number: " backup_type
-        case $backup_type in
-            1)
-                start_advenced_backup
-                ;;
-            2)
-                start_simple_backup
-                ;;
-            *)
-                error "Invalid option. Please select 1 for Simple or 2 for Advanced."
-                ;;
-        esac
-    done
-    sleep 1
-}
-
 backup_template() {
     clear
     print "[TEMPLATE]\n"
@@ -204,6 +180,7 @@ backup_template() {
     print "2) Marzban Logs"
     print "3) All X-ui's"
     print "4) Hiddify Manager"
+    print "5) Mirza Bot"
     print "0) Custom"
     print ""
 
@@ -227,6 +204,10 @@ backup_template() {
                 hiddify_template
                 break
                 ;;
+            5)
+                mirzabot_template
+                break
+                ;;
             0)
                 success "You Chose Custom"
                 break
@@ -237,6 +218,39 @@ backup_template() {
         esac
     done
 }
+
+mirzabot_template() {
+    log "Checking mirzabot backup..."
+    local mirzabot_file='/var/www/html/mirzabotconfig/config.php'
+    
+    if [ ! -f "$mirzabot_file" ]; then
+        error "Backup file does not exist."
+        exit 1
+    else
+        success "$mirzabot_file Backup file exists."
+    fi
+
+    # Extract database values from config.php
+    dbname=$(grep -m 1 "\$dbname" $mirzabot_file | sed -E "s/.*dbname\s*=\s*'([^']+)'.*/\1/")
+    usernamedb=$(grep -m 1 "\$usernamedb" $mirzabot_file | sed -E "s/.*usernamedb\s*=\s*'([^']+)'.*/\1/")
+    passworddb=$(grep -m 1 "\$passworddb" $mirzabot_file | sed -E "s/.*passworddb\s*=\s*'([^']+)'.*/\1/")
+
+    # Check if the values are extracted correctly
+    if [ -z "$dbname" ] || [ -z "$usernamedb" ] || [ -z "$passworddb" ]; then
+        error "Failed to extract database values from $mirzabot_file."
+        exit 1
+    else
+        success "Database Name: $dbname"
+        success "Database Username: $usernamedb"
+        success "Database Password: $passworddb"
+        
+        # Initialize the array if not already done
+        declare -gA mirza_database
+        mirza_database["$dbname"]="${dbname}:${usernamedb}:${passworddb}"
+        sleep 1
+    fi
+}
+
 
 hiddify_template() {
     log "Checking hiddify backup..."
@@ -414,15 +428,6 @@ backup_custom_dir() {
             success "Added to list: $path"
         fi
     done
-}
-
-start_simple_backup() {
-    check_needs
-    backup_template
-    backup_name
-    backup_cronjob
-    send_to
-    backup_generate
 }
 
 start_advenced_backup() {
@@ -694,6 +699,20 @@ backup_generate() {
             local db_address="/root/${name}_${db_name}_backuper.sql"
             local dump_command="if ! docker exec marzban-mysql-1 mysqldump -u root -p'${db_password}' '${db_name}' > '${db_address}'; then
     message=\"Failed to backup database ${db_name}. Please check the server.\"
+    $send_notification_command
+    exit 1
+fi"
+            DB+="${dump_command}\n"
+            directories+=("$db_address")
+        done
+    fi
+
+    if [ ${#mirza_database[@]} -gt 0 ]; then
+        for database in "${mirza_database[@]}"; do
+            IFS=':' read -r dbname usernamedb passworddb <<< "$database"
+            local db_address="/root/${name}_${dbname}_backuper.sql"
+            local dump_command="if ! mysqldump -u '${usernamedb}' -p'${passworddb}' '${dbname}' > '${db_address}'; then
+    message=\"Failed to backup database ${dbname}. Please check the server.\"
     $send_notification_command
     exit 1
 fi"
