@@ -779,7 +779,7 @@ $(echo -e "$LOGS")
 $(echo -e "$COMMANDS")
 
 if ! $compression_full_cmd "\$backup_name" ${directories[@]}; then
-    message="Failed to compress files. Please check the server."
+    message="Failed to compress ${name} files. Please check the server."
     echo "\$message"
     $send_notification_command
     exit 1
@@ -791,7 +791,7 @@ if ls \${base_name}* > /dev/null 2>&1; then
         if $send_file_command; then
             echo "Backup part sent successfully: \$file_to_send"
         else
-            message="Failed to send backup part: \$file_to_send. Please check the server."
+            message="Failed to send ${name} backup part: \$file_to_send. Please check the server."
             echo "\$message"
             $send_notification_command
             exit 1
