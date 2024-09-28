@@ -1,5 +1,4 @@
 #!/bin/bash
-
 colors=( "\033[1;31m" "\033[1;35m" "\033[1;92m" "\033[38;5;46m" "\033[1;38;5;208m" "\033[1;36m" "\033[0m" )
 red=${colors[0]} pink=${colors[1]} green=${colors[2]} spring=${colors[3]} orange=${colors[4]} cyan=${colors[5]} reset=${colors[6]}
 print() { echo -e "${cyan}$1${reset}"; }
@@ -105,6 +104,7 @@ menu() {
         print "—————————————————————————————————————————————————————————————————————————"
         print "1) Install"
         print "2) Manage"
+        print "3) Restore"
         print "0) Exit"
         print ""
         input "Enter your option number: " option
@@ -115,6 +115,9 @@ menu() {
                 ;;
             2)
                 manage_backups
+                ;;
+            3)
+                restore_backup
                 ;;
             0)
                 print "Thank you for using @ErfJabs script. Goodbye!"
@@ -839,6 +842,209 @@ EOL
         exit 1
     fi
 }
+
+
+#Restore backup
+restore_backup() {
+
+    zip_copy(){
+            # Copy files from the temporary extraction directory to system paths
+            log "Copying files from temporary directory to system paths..."
+            local temp_dir="$1"
+            cd "$temp_dir" || exit
+            find . -type f | while read -r file; do
+                target_path="/${file#./}"
+                log "Copying file: $file to $target_path"
+                mkdir -p "$(dirname "$target_path")"
+                cp "$file" "$target_path"
+            done
+
+            find . -type d | while read -r dir; do
+                target_path="/${dir#./}"
+                log "Creating directory: $dir at $target_path"
+                mkdir -p "$target_path"
+            done
+
+            # Remove temporary directory
+
+            success "Files from $archive_file have been successfully extracted and copied."
+                }
+
+
+seven_zip_copy(){
+    local temp_dir="$1"  # Temporary directory
+
+    # Define default directories based on file extension
+    local default_yml_dir="/opt/marzban/"
+    local default_env_dir="/opt/marzban/"
+    local default_sqlite3_dir="/var/lib/marzban/"
+    local default_json_dir="/var/lib/marzban/"
+
+    # Ensure we are in the temporary directory
+    cd "$temp_dir" || { echo "Failed to access temporary directory."; exit 1; }
+
+    for file in *; do
+        if [ -f "$file" ]; then
+            # Get the file extension
+            extension="${file##*.}"
+            case ".$extension" in
+                ".yml")
+                    default_dir="$default_yml_dir"
+                    ;;
+                ".env")
+                    default_dir="$default_env_dir"
+                    ;;
+                ".sqlite3")
+                    default_dir="$default_sqlite3_dir"
+                    ;;
+                ".json")
+                    default_dir="$default_json_dir"
+                    ;;
+                *)
+                    default_dir=""
+                    ;;
+            esac
+
+            # Ask user for target directory
+            if [ -n "$default_dir" ]; then
+                log "_____________________________________________________"
+                print "File '$file' has an extension of '.$extension'."
+                log "Default directory for this file is: $default_dir"
+                input "Enter target directory (or press Enter to use default): " target_dir
+                target_dir="${target_dir:-$default_dir}"
+            else
+                input "Enter target directory for file '$file': " target_dir
+            fi
+
+            # Validate the target directory
+            if [ -n "$target_dir" ]; then
+                mkdir -p "$target_dir"  # Create the directory if it doesn't exist
+                cp "$file" "$target_dir"
+                success "Copied '$file' to '$target_dir'."
+            else
+                error "No target directory specified for '$file'."
+            fi
+        fi
+    done
+    print ""
+    print ""
+    success "Files have been successfully copied."
+}
+
+
+# Function to extract and copy files from the archive to the correct system paths
+extract_and_copy_archive() {
+    local archive_file="$1"
+    local base_name
+    local temp_dir
+    local sevenz_password
+    local zip_password
+
+    # Extract base name without extension
+    base_name=$(basename "$archive_file" | sed 's/\.[^.]*$//')
+    temp_dir="/root/Restore/old-$base_name"
+
+    # Ensure temp directory is clean
+    rm -rf "$temp_dir"
+    mkdir -p "$temp_dir"
+
+    if [ ! -f "$archive_file" ]; then
+        error "File $archive_file does not exist."
+        exit 1
+    fi
+
+    case "$archive_file" in
+        *.zip)
+            print "Handling ZIP file."
+            if unzip "$archive_file" -d "$temp_dir"; then
+                success "Unzipping completed successfully."
+                zip_copy "$temp_dir"
+            else
+                error "Failed to unzip the file." >&2
+                exit 1
+            fi
+            ;;
+        *.7z.001)
+            log "Handling 7z file..."
+            
+            if 7z x "$archive_file" -o"$temp_dir"; then
+            success "Unzipping completed successfully."
+            seven_zip_copy "$temp_dir"
+
+            else
+                error "Failed to unzip the file." >&2
+                exit 1
+            fi
+            ;;
+        *)
+            error "Unsupported file format. Please provide a ZIP or 7z file."
+            rm -rf "$temp_dir"
+            exit 1
+            ;;
+    esac
+
+    if [ $? -ne 0 ]; then
+        echo "Failed to extract $archive_file. Please check the password and try again."
+        rm -rf "$temp_dir"
+        exit 1
+    fi
+
+
+    
+
+     }
+
+
+remove_old_archives() {
+        print ""
+        print "————————————————————————————————————————————————————————————————————————"
+        print ""
+        input "Do you want to remove old archives? (yes/no)( Default: no ) : " answer
+        local name=$1;
+            if [ "$answer" == "y" ]; then
+                log "removing old archives"
+                find /root/Restore/ -name "old-$name" -type d -exec rm -rf {} \;
+            else
+                log "skipping removal of old archives"
+                success "You can find the extracted files in /root/Restore/old-$name"
+            fi
+
+
+                    }
+
+
+# Main function for the menu and extraction option
+restore_menu() {
+    while true; do
+        print "\n\t Select an option:"
+        print "—————————————————————————————————————————————————————————————————————————"
+        print "1) Marzban Panel"
+        print "0) Exit"
+        print ""
+        input "Enter your option number: " options 
+        case $options in
+            1)
+                input  "Enter the path to the archive file (.zip or .7z): " archive_file
+                extract_and_copy_archive "$archive_file"
+                ;;
+            0)
+                success "Thank you for using the Backup Utility. Goodbye!"
+                exit 0
+                ;;
+            *)
+                error "Invalid option, Please select a valid option!"
+                ;;
+        esac
+    done
+}
+
+# Run the menu
+ check_needs
+restore_menu
+remove_old_archives
+marzban restart
+}
+
 
 run() {
     cd
