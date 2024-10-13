@@ -19,14 +19,17 @@ check_needs() {
         PKG_MANAGER="apt-get"
         PKG_UPDATE="$PKG_MANAGER update -y"
         PKG_INSTALL="$PKG_MANAGER install -y"
+        MYSQL_CLIENT_PKG="mysql-client"
     elif command -v dnf &> /dev/null; then
         PKG_MANAGER="dnf"
         PKG_UPDATE="$PKG_MANAGER check-update"
         PKG_INSTALL="$PKG_MANAGER install -y"
+        MYSQL_CLIENT_PKG="mysql"
     elif command -v yum &> /dev/null; then
         PKG_MANAGER="yum"
         PKG_UPDATE="$PKG_MANAGER check-update"
         PKG_INSTALL="$PKG_MANAGER install -y"
+        MYSQL_CLIENT_PKG="mysql"
     else
         error "No supported package manager found. Please install packages manually."
         exit 1
@@ -36,7 +39,7 @@ check_needs() {
     $PKG_UPDATE || true
 
     packages_to_install=()
-    for pkg in curl wget zip cron; do
+    for pkg in curl wget zip cron $MYSQL_CLIENT_PKG; do
         if ! command -v $pkg &> /dev/null; then
             log "Need to install $pkg"
             packages_to_install+=($pkg)
@@ -94,6 +97,12 @@ check_needs() {
         systemctl enable cron || { error "Failed to enable cron service."; exit 1; }
     fi
 
+    # Verify mysqldump installation
+    if ! command -v mysqldump &> /dev/null; then
+        error "mysqldump is not installed. Please check your MySQL client installation."
+        exit 1
+    fi
+
     success "All necessary packages are installed and cron service is running."
     sleep 1
 }
@@ -101,7 +110,7 @@ check_needs() {
 menu() {
     while true; do
         print "\n\t Welcome to Backuper!"
-        print "\t\t version 0.2.0 by @ErfJab"
+        print "\t\t version 0.2.1 by @ErfJab"
         print "—————————————————————————————————————————————————————————————————————————"
         print "1) Install"
         print "2) Manage"
@@ -180,7 +189,8 @@ backup_template() {
     print "2) Marzban Logs"
     print "3) All X-ui's"
     print "4) Hiddify Manager"
-    print "5) Mirza Bot"
+    print "5) Marzneshin"
+    print "6) Mirza Bot"
     print "0) Custom"
     print ""
 
@@ -205,6 +215,10 @@ backup_template() {
                 break
                 ;;
             5)
+                marzneshin_template
+                break
+                ;;
+            6)
                 mirzabot_template
                 break
                 ;;
@@ -217,6 +231,87 @@ backup_template() {
                 ;;
         esac
     done
+}
+
+marzneshin_template() {
+    log "Checking Marzneshin configuration..."
+    local docker_compose_file="/etc/opt/marzneshin/docker-compose.yml"
+
+    if [ ! -f "$docker_compose_file" ]; then
+        error "Docker compose file not found: $docker_compose_file"
+        exit 1
+    else
+        success "Docker compose file found: $docker_compose_file"
+    fi
+
+    log "Analyzing Marzneshin database configuration..."
+    local db_type=$(yq eval '.services.db.image' "$docker_compose_file")
+    local db_name=$(yq eval '.services.db.environment.MARIADB_DATABASE // .services.db.environment.MYSQL_DATABASE' "$docker_compose_file")
+    local db_password=$(yq eval '.services.db.environment.MARIADB_ROOT_PASSWORD // .services.db.environment.MYSQL_ROOT_PASSWORD' "$docker_compose_file")
+    local db_port=$(yq eval '.services.db.ports[0]' "$docker_compose_file" | cut -d':' -f2)
+
+    if [[ "$db_type" == *"mariadb"* ]]; then
+        success "Database type: MariaDB"
+    elif [[ "$db_type" == *"mysql"* ]]; then
+        success "Database type: MySQL"
+    else
+        error "Unsupported database type: $db_type"
+        exit 1
+    fi
+
+    success "Database name: $db_name"
+    success "Database port: $db_port"
+    
+    if [ -z "$db_password" ]; then
+        error "Database password not found in docker-compose.yml"
+        exit 1
+    else
+        success "Database password found"
+    fi
+
+    log "Setting up backup for Marzneshin database..."
+    local db_backup_path="/root/${name}_marzneshin_db_backup.sql"
+    mysql_database["marzneshin"]="marzneshin:${db_name}:${db_password}:${db_port}"
+
+    log "Adding Marzneshin directories to backup list..."
+    directories=()
+
+    add_directories() {
+        local base_dir="$1"
+        while IFS= read -r -d '' item; do
+            if [[ ! "$item" =~ /mysql ]]; then
+                success "$item"
+                directories+=("$item")
+            fi
+        done < <(find "$base_dir" -mindepth 1 -print0)
+    }
+
+    log "Scanning volume: /var/lib/marzneshin"
+    add_directories "/var/lib/marzneshin"
+
+    log "Scanning volume: /etc/opt/marzneshin"
+    add_directories "/etc/opt/marzneshin"
+
+    log "Listing volumes from docker-compose..."
+    services=$(yq eval '.services | keys | .[]' "$docker_compose_file")
+    for service in $services; do
+        volumes=$(yq eval ".services.$service.volumes | .[]" "$docker_compose_file" 2>/dev/null | awk -F ':' '{print $1}')
+        if [ -n "$volumes" ]; then
+            for volume in $volumes; do
+                if [[ -d "$volume" && ! "$volume" =~ /mysql && ! "$volume" =~ /mariadb ]]; then
+                    log "Scanning volume: $volume for service: $service"
+                    add_directories "$volume"
+                elif [[ -d "$volume" ]]; then
+                    log "Skipping database volume: $volume for service: $service"
+                else
+                    error "Volume $volume for service $service does not exist or is not a directory."
+                fi
+            done
+        fi
+    done
+
+    success "Marzneshin backup configuration complete"
+    sleep 2
 }
 
 mirzabot_template() {
@@ -250,7 +345,6 @@ mirzabot_template() {
         sleep 1
     fi
 }
-
 
 hiddify_template() {
     log "Checking hiddify backup..."
@@ -695,13 +789,22 @@ backup_generate() {
     local DB=""
     if [ ${#mysql_database[@]} -gt 0 ]; then
         for database in "${mysql_database[@]}"; do
-            IFS=':' read -r service_name db_name db_password <<< "$database"
+            IFS=':' read -r service_name db_name db_password db_port <<< "$database"
             local db_address="/root/${name}_${db_name}_backuper.sql"
-            local dump_command="if ! docker exec marzban-mysql-1 mysqldump -u root -p'${db_password}' '${db_name}' > '${db_address}'; then
+            local dump_command
+            if [ "$service_name" == "marzneshin" ]; then
+                dump_command="if ! mysqldump -h 127.0.0.1 -P ${db_port} -u root -p'${db_password}' --column-statistics=0 '${db_name}' > '${db_address}'; then
+    message=\"Failed to backup Marzneshin database ${db_name}. Please check the server.\"
+    $send_notification_command
+    exit 1
+fi"
+            else
+                dump_command="if ! docker exec marzban-mysql-1 mysqldump -u root -p'${db_password}' '${db_name}' > '${db_address}'; then
     message=\"Failed to backup database ${db_name}. Please check the server.\"
     $send_notification_command
     exit 1
 fi"
+            fi
             DB+="${dump_command}\n"
             directories+=("$db_address")
         done

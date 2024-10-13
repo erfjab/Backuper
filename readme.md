@@ -28,6 +28,7 @@ Backuper is an automated backup script with full customization options and suppo
 
   - **Marzban**
   - **Marzban logs**
+  - **Marzneshin**
   - **All X-ui's**
   - **Hiddify Manager**
   - **Custom**
