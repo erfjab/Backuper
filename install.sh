@@ -867,13 +867,17 @@ fi
     cat <<EOL > "$backup_script"
 #!/bin/bash
 
+set -e 
+
 ip=\$(hostname -I | awk '{print \$1}')
 timestamp=\$(TZ='Asia/Tehran' date +%m%d-%H%M)
-base_name="/root/${name}_\${timestamp}."
-backup_name="/root/${name}_\${timestamp}${compression_ext}"
+base_name="/root/${name}_\${timestamp}_backuper."
+backup_name="/root/${name}_\${timestamp}_backuper${compression_ext}"
 caption="${CAPTION_TEXT}"
 
 rm -f "\$backup_name"*
+rm -f *"_backuper.sql"
+$(echo -e "$rm_commands")
 
 $(echo -e "$DB")
 
