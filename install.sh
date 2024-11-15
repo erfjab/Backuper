@@ -110,7 +110,7 @@ check_needs() {
 menu() {
     while true; do
         print "\n\t Welcome to Backuper!"
-        print "\t\t version 0.2.4 by @ErfJab"
+        print "\t\t version 0.2.3 by @ErfJab"
         print "—————————————————————————————————————————————————————————————————————————"
         print "1) Install"
         print "2) Manage"
@@ -783,7 +783,7 @@ backup_compression() {
 }
 
 backup_generate() {
-    local backup_script="/root/${name}_backuper.sh"
+    local backup_script="/root/${name}_backuper_.sh"
     log "Generating backup script: $backup_script..."
 
     local DB=""
@@ -875,6 +875,7 @@ base_name="/root/${name}_\${timestamp}_backuper."
 backup_name="/root/${name}_\${timestamp}_backuper${compression_ext}"
 caption="${CAPTION_TEXT}"
 
+rm -f *"_backuper."*
 rm -f "\$backup_name"*
 rm -f *"_backuper.sql"
 $(echo -e "$rm_commands")
