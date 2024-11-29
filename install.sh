@@ -893,24 +893,35 @@ if ! $compression_full_cmd "\$backup_name" ${directories[@]}; then
     exit 1
 fi
 
-if ls \${base_name}* > /dev/null 2>&1; then
-    for file_to_send in \${base_name}*; do
-        echo "Sending file: \$file_to_send"
-        if $send_file_command; then
-            echo "Backup part sent successfully: \$file_to_send"
-        else
-            message="Failed to send ${name} backup part: \$file_to_send. Please check the server."
-            echo "\$message"
-            $send_notification_command
-            exit 1
-        fi
+if find ${base_name}* -type f > /dev/null 2>&1; then
+  for file_to_send in ${base_name}*; do
+    echo "Sending file: $file_to_send"
+    retry_count=0
+    max_retries=4
+    while [ $retry_count -lt $max_retries ]; do
+      if $send_file_command; then
+        echo "Backup All part sent Successfully: $file_to_send"
+        break
+      else
+        retry_count=$((retry_count+1))
+        echo "Failed to send $file_to_send. Retrying... Attempt $retry_count"
+        sleep 3
+      fi
+
+      if [ $retry_count -eq $max_retries ]; then
+        message="Failed to send ${name} backup part: $file_to_send after $max_retries attempts. Please check the server."
+        echo "$message"
+        $send_notification_command
+        exit 1
+      fi
     done
-    echo "All backup parts sent successfully"
+  done
+  echo "All backup parts sent successfully"
 else
-    message="Backup file not found: \$base_name. Please check the server."
-    echo "\$message"
-    $send_notification_command
-    exit 1
+  message="Backup file not found: $base_name. Please check the server."
+  echo "$message"
+  $send_notification_command
+  exit 1
 fi
 
 rm -f "\$base_name"*
