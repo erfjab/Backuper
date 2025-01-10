@@ -137,7 +137,7 @@ menu() {
 }
 
 manage_backups() {
-    local backup_scripts=($(find /root/ -name "*_backuper.sh" -o -name "ac-backup*.sh"))
+    local backup_scripts=($(find /root/ -name "*_backuper*.sh" -o -name "ac-backup*.sh"))
     
     if [ ${#backup_scripts[@]} -eq 0 ]; then
         success "No active backup scripts found."
