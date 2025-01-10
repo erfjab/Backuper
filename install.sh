@@ -662,24 +662,25 @@ send_to_telegram() {
         elif [[ ! "$chat_id" =~ ^-?[0-9]+$ ]]; then
             error "Invalid chat ID format!"
         else
+            input "Enter the message thread ID (Press Enter to skip): " message_thread_id
+
+            log "Checking Telegram bot..."
+            if [ -n "$message_thread_id" ]; then
+                response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "https://api.telegram.org/bot$bot_token/sendMessage" -d chat_id="$chat_id" -d message_thread_id="$message_thread_id" -d text="Backuper Test Message!")
+            else
+                response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "https://api.telegram.org/bot$bot_token/sendMessage" -d chat_id="$chat_id" -d text="Backuper Test Message!")
+            fi
+
+            if [[ "$response" -ne 200 ]]; then
+                error "Invalid bot token, chat ID, message thread ID, or Telegram API error!"
+            else
+                success "Bot token, chat ID, and thread ID (if provided) are valid."
+            fi
             break
         fi
     done
 
-    input "Enter the message thread ID (Press Enter to skip): " message_thread_id
 
-    log "Checking Telegram bot..."
-    if [ -n "$message_thread_id" ]; then
-        response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "https://api.telegram.org/bot$bot_token/sendMessage" -d chat_id="$chat_id" -d message_thread_id="$message_thread_id" -d text="Backuper Test Message!")
-    else
-        response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "https://api.telegram.org/bot$bot_token/sendMessage" -d chat_id="$chat_id" -d text="Backuper Test Message!")
-    fi
-
-    if [[ "$response" -ne 200 ]]; then
-        error "Invalid bot token, chat ID, message thread ID, or Telegram API error!"
-    else
-        success "Bot token, chat ID, and thread ID (if provided) are valid."
-    fi
     sleep 1
 }
 
