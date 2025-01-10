@@ -675,12 +675,11 @@ send_to_telegram() {
                 error "Invalid bot token, chat ID, message thread ID, or Telegram API error!"
             else
                 success "Bot token, chat ID, and thread ID (if provided) are valid."
+                sleep 1
+                break
             fi
-            break
         fi
     done
-
-
     sleep 1
 }
 
