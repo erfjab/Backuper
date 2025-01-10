@@ -677,7 +677,6 @@ send_to_telegram() {
 
     if [[ "$response" -ne 200 ]]; then
         error "Invalid bot token, chat ID, message thread ID, or Telegram API error!"
-        exit 1
     else
         success "Bot token, chat ID, and thread ID (if provided) are valid."
     fi
