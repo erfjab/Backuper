@@ -642,7 +642,7 @@ send_to() {
 send_to_telegram() {
     clear
     print "[TELEGRAM]\n"
-    print "To use Telegram, you need to provide a bot token and a chat ID.\n"
+    print "To use Telegram, you need to provide a bot token, chat ID, and optionally a message thread ID.\n"
 
     while true; do
         input "Enter the bot token: " bot_token
@@ -662,17 +662,25 @@ send_to_telegram() {
         elif [[ ! "$chat_id" =~ ^-?[0-9]+$ ]]; then
             error "Invalid chat ID format!"
         else
-            log "Checking Telegram bot..."
-            response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "https://api.telegram.org/bot$bot_token/sendMessage" -d chat_id="$chat_id" -d text="Backuper Test Message!")
-            if [[ "$response" -ne 200 ]]; then
-                error "Invalid bot token or chat ID, or Telegram API error!"
-            else
-                success "Bot token and chat ID are valid."
-                sleep 1
-                break
-            fi
+            break
         fi
     done
+
+    input "Enter the message thread ID (Press Enter to skip): " message_thread_id
+
+    log "Checking Telegram bot..."
+    if [ -n "$message_thread_id" ]; then
+        response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "https://api.telegram.org/bot$bot_token/sendMessage" -d chat_id="$chat_id" -d message_thread_id="$message_thread_id" -d text="Backuper Test Message!")
+    else
+        response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "https://api.telegram.org/bot$bot_token/sendMessage" -d chat_id="$chat_id" -d text="Backuper Test Message!")
+    fi
+
+    if [[ "$response" -ne 200 ]]; then
+        error "Invalid bot token, chat ID, message thread ID, or Telegram API error!"
+        exit 1
+    else
+        success "Bot token, chat ID, and thread ID (if provided) are valid."
+    fi
     sleep 1
 }
 
@@ -853,8 +861,13 @@ fi
     local send_file_command
     local send_notification_command
     if [ "$send_to_option" == "1" ]; then  # Telegram
-        send_file_command="curl -s -F \"chat_id=$chat_id\" -F \"document=@\$file_to_send\" -F \"caption=\$caption\" -F \"parse_mode=HTML\" \"https://api.telegram.org/bot$bot_token/sendDocument\""
-        send_notification_command="curl -s -X POST \"https://api.telegram.org/bot$bot_token/sendMessage\" -d \"chat_id=$chat_id\" -d \"text=\$message\" -d \"parse_mode=HTML\""
+        if [ -n "$message_thread_id" ]; then
+            send_file_command="curl -s -F \"chat_id=$chat_id\" -F \"message_thread_id=$message_thread_id\" -F \"document=@\$file_to_send\" -F \"caption=\$caption\" -F \"parse_mode=HTML\" \"https://api.telegram.org/bot$bot_token/sendDocument\""
+            send_notification_command="curl -s -X POST \"https://api.telegram.org/bot$bot_token/sendMessage\" -d \"chat_id=$chat_id\" -d \"message_thread_id=$message_thread_id\" -d \"text=\$message\" -d \"parse_mode=HTML\""
+        else
+            send_file_command="curl -s -F \"chat_id=$chat_id\" -F \"document=@\$file_to_send\" -F \"caption=\$caption\" -F \"parse_mode=HTML\" \"https://api.telegram.org/bot$bot_token/sendDocument\""
+            send_notification_command="curl -s -X POST \"https://api.telegram.org/bot$bot_token/sendMessage\" -d \"chat_id=$chat_id\" -d \"text=\$message\" -d \"parse_mode=HTML\""
+        fi
         CAPTION_TEXT="${caption} 
 📦 From <code>\${ip}</code> 
 ⚡️ Develop by <b>@ErfJabs</b>"
