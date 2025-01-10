@@ -23,6 +23,7 @@ Backuper is an automated backup script with full customization options and suppo
 - **No annoying ads**
 - **Get a list of active backups**
 - **Ability to stop backups**
+- **Send backups to Telegram thread (topic) of the forum**
 
 ### 📦 Templates
 
