@@ -146,6 +146,7 @@ menu() {
 start_backup() {
     generate_remark
     generate_caption
+    generate_timer
 }
 
 
@@ -185,5 +186,41 @@ generate_caption() {
         success "Caption set: $caption"
     fi
 
+    sleep 1
+}
+
+
+generate_timer() {
+    clear
+    print "[TIMER]\n"
+    print "Enter a time interval in minutes for sending backups."
+    print "For example, '10' means backups will be sent every 10 minutes.\n"
+
+    while true; do
+        input "Enter the number of minutes (1-1440): " minutes
+
+        if ! [[ "$minutes" =~ ^[0-9]+$ ]]; then
+            error "Please enter a valid number."
+        elif [ "$minutes" -lt 1 ] || [ "$minutes" -gt 1440 ]; then
+            error "Number must be between 1 and 1440."
+        else
+            break
+        fi
+    done
+
+    if [ "$minutes" -le 59 ]; then
+        cron_timer="*/$minutes * * * *"
+    elif [ "$minutes" -le 1439 ]; then
+        hours=$((minutes / 60))
+        remaining_minutes=$((minutes % 60))
+        if [ "$remaining_minutes" -eq 0 ]; then
+            cron_timer="0 */$hours * * *"
+        else
+            cron_timer="*/$remaining_minutes */$hours * * *"
+        fi
+    else
+        cron_timer="0 0 * * *" 
+    fi
+    success "Cron job set to run every $minutes minutes: $cron_timer"
     sleep 1
 }
