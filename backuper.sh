@@ -4,6 +4,8 @@
 # Global constants
 readonly SCRIPT_SUFFIX="_backuper.sh"
 readonly BACKUP_SUFFIX="_backuper.zip"
+readonly VERSION="v0.3.0"
+readonly OWNER="@ErfJabs"
 
 
 # ANSI color codes
