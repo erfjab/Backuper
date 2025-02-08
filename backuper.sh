@@ -130,7 +130,7 @@ menu() {
         input "Choose an option:" choice
         case $option in
             1)
-                success "select option one"
+                start_backup
                 ;;
             2)
                 print "Thank you for using @ErfJabs script. Goodbye!"
@@ -141,4 +141,30 @@ menu() {
                 ;;
         esac
     done
+}
+
+start_backup() {
+    generate_remark
+}
+
+
+generate_remark() {
+    print "[REAMARK]\n"
+    print "We need a remark for the backup file (e.g., Master, panel, ErfJab).\n"
+
+    while true; do
+        input "Enter a remark: " remark
+
+        if ! [[ "$remark" =~ ^[a-zA-Z0-9_]+$ ]]; then
+            error "remark must contain only letters, numbers, or underscores."
+        elif [ ${#remark} -lt 3 ]; then
+            error "remark must be at least 3 characters long."
+        elif [ -e "${remark}_backuper.sh" ]; then
+            error "File ${remark}_backuper.sh already exists. Choose a different remark."
+        else
+            success "Backup remark: $remark"
+            break
+        fi
+    done
+    sleep 1
 }
