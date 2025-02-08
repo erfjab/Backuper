@@ -1,5 +1,11 @@
 #!/bin/bash
 
+
+# Global constants
+readonly SCRIPT_SUFFIX="_backuper.sh"
+readonly BACKUP_SUFFIX="_backuper.zip"
+
+
 # ANSI color codes
 declare -r -A COLORS=(
     [RED]='\033[0;31m'
