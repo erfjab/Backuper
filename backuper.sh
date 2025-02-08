@@ -18,3 +18,8 @@ success() { printf "${COLORS[GREEN]}[SUCCESS]${COLORS[RESET]} %s\n" "$*"; }
 
 # Error handling
 trap 'error "An error occurred. Exiting..."' ERR
+
+# Utility functions
+check_root() {
+    [[ $EUID -eq 0 ]] || error "This script must be run as root"
+}
