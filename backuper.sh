@@ -148,6 +148,7 @@ start_backup() {
     generate_caption
     generate_timer
     generate_template
+    generate_platform
 }
 
 
@@ -236,7 +237,7 @@ generate_template() {
         input "Enter your template number: " template
         case $template in
             1)
-                marzneshin_template
+                marzneshin_progress
                 break
                 ;;
             0)
@@ -250,7 +251,6 @@ generate_template() {
     done
 }
 
-# Function to add directories to backup list
 add_directories() {
     local base_dir="$1"
     local exclude_patterns=("${@:2}")  # Get all arguments after the first as exclude patterns
@@ -278,7 +278,7 @@ add_directories() {
     done < <(find "$base_dir" -mindepth 1 -maxdepth 1 -type d -print0)
 }
 
-marzneshin_template() {
+marzneshin_progress() {
     log "Checking Marzneshin configuration..."
     local docker_compose_file="/etc/opt/marzneshin/docker-compose.yml"
 
@@ -335,4 +335,60 @@ marzneshin_template() {
     BACKUP_DB_COMMAND="$backup_command"
 }
 
+generate_platform() {
+    print "[PLATFORM]\n"
+    print "Select one platform to send your backup.\n"
+    print "1) Telegram"
 
+    while true; do
+        input "Enter your choice : " choise
+
+        case $choise in
+            1)
+                telegram_progress
+                break
+                ;;
+            *)
+                error "Invalid option, Please select with number."
+                ;;
+        esac
+    done
+    sleep 1
+}
+
+telegram_progress() {
+    clear
+    print "[TELEGRAM]\n"
+    print "To use Telegram, you need to provide a bot token and a chat ID.\n"
+
+    while true; do
+        input "Enter the bot token: " bot_token
+        if [[ -z "$bot_token" ]]; then
+            error "Bot token cannot be empty!"
+        elif [[ ! "$bot_token" =~ ^[0-9]+:[a-zA-Z0-9_-]{35}$ ]]; then
+            error "Invalid bot token format!"
+        else
+            break
+        fi
+    done
+
+    while true; do
+        input "Enter the chat ID: " chat_id
+        if [[ -z "$chat_id" ]]; then
+            error "Chat ID cannot be empty!"
+        elif [[ ! "$chat_id" =~ ^-?[0-9]+$ ]]; then
+            error "Invalid chat ID format!"
+        else
+            log "Checking Telegram bot..."
+            response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "https://api.telegram.org/bot$bot_token/sendMessage" -d chat_id="$chat_id" -d text="Hi, Backuper Test Message!")
+            if [[ "$response" -ne 200 ]]; then
+                error "Invalid bot token or chat ID, or Telegram API error!"
+            else
+                success "Bot token and chat ID are valid."
+                sleep 1
+                break
+            fi
+        fi
+    done
+    sleep 1
+}
