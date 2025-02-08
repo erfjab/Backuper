@@ -147,6 +147,7 @@ start_backup() {
     generate_remark
     generate_caption
     generate_timer
+    generate_template
 }
 
 
@@ -189,7 +190,6 @@ generate_caption() {
     sleep 1
 }
 
-
 generate_timer() {
     clear
     print "[TIMER]\n"
@@ -224,3 +224,115 @@ generate_timer() {
     success "Cron job set to run every $minutes minutes: $cron_timer"
     sleep 1
 }
+
+generate_template() {
+    clear
+    print "[TEMPLATE]\n"
+    print "Choose a backup template. You can add or remove custom directories after selecting.\n"
+    print "1) Marzneshin"
+    print "0) Custom"
+    print ""
+    while true; do
+        input "Enter your template number: " template
+        case $template in
+            1)
+                marzneshin_template
+                break
+                ;;
+            0)
+                success "You Chose Custom"
+                break
+                ;;
+            *)
+                error "Invalid option. Please choose a valid number!"
+                ;;
+        esac
+    done
+}
+
+# Function to add directories to backup list
+add_directories() {
+    local base_dir="$1"
+    local exclude_patterns=("${@:2}")  # Get all arguments after the first as exclude patterns
+
+    # Check if base directory exists
+    [[ ! -d "$base_dir" ]] && { warn "Directory not found: $base_dir"; return; }
+
+    # Find directories and filter based on exclude patterns
+    while IFS= read -r -d '' item; do
+        local exclude_item=false
+
+        # Check if item matches any exclude pattern
+        for pattern in "${exclude_patterns[@]}"; do
+            if [[ "$item" =~ $pattern ]]; then
+                exclude_item=true
+                break
+            fi
+        done
+
+        # Add item to backup list if it doesn't match any exclude pattern
+        if ! $exclude_item; then
+            success "Added to backup: $item"
+            directories+=("$item")
+        fi
+    done < <(find "$base_dir" -mindepth 1 -maxdepth 1 -type d -print0)
+}
+
+marzneshin_template() {
+    log "Checking Marzneshin configuration..."
+    local docker_compose_file="/etc/opt/marzneshin/docker-compose.yml"
+
+    # Check if docker-compose file exists
+    [[ -f "$docker_compose_file" ]] || { error "Docker compose file not found: $docker_compose_file"; return 1; }
+
+    # Extract database configuration
+    local db_type db_name db_password db_port
+    db_type=$(yq eval '.services.db.image' "$docker_compose_file")
+    db_name=$(yq eval '.services.db.environment.MARIADB_DATABASE // .services.db.environment.MYSQL_DATABASE' "$docker_compose_file")
+    db_password=$(yq eval '.services.db.environment.MARIADB_ROOT_PASSWORD // .services.db.environment.MYSQL_ROOT_PASSWORD' "$docker_compose_file")
+    db_port=$(yq eval '.services.db.ports[0]' "$docker_compose_file" | cut -d':' -f2)
+
+    # Determine database type
+    if [[ "$db_type" != *"mariadb"* && "$db_type" != *"mysql"* ]]; then
+        db_type="sqlite"
+    fi
+
+    # Validate database password for non-sqlite databases
+    if [[ "$db_type" != "sqlite" && -z "$db_password" ]]; then
+        error "Database password not found"
+        return 1
+    fi
+
+    # Setup backup configuration
+    local db_backup_path="/root/${name}_db_backup.sql"
+    local directories=()
+
+    # Scan default directories
+    log "Scanning directories..."
+    add_directories "/var/lib/marzneshin" "mysql" "mariadb"
+    add_directories "/etc/opt/marzneshin"
+
+    # Extract volumes from docker-compose
+    log "Extracting volumes from docker-compose..."
+    for service in $(yq eval '.services | keys | .[]' "$docker_compose_file"); do
+        for volume in $(yq eval ".services.$service.volumes | .[]" "$docker_compose_file" 2>/dev/null | awk -F ':' '{print $1}'); do
+            [[ -d "$volume" && ! "$volume" =~ /(mysql|mariadb)$ ]] && add_directories "$volume"
+        done
+    done
+
+    # Generate backup command for non-sqlite databases
+    local backup_command=""
+    if [[ "$db_type" != "sqlite" ]]; then
+        backup_command="mysqldump -u root -p'$db_password' -P $db_port $db_name > $db_backup_path"
+    fi
+
+    # Log success messages
+    success "Backup command generated: $backup_command"
+    success "Backup directories saved"
+
+    # Export backup variables
+    BACKUP_DIRECTORIES="${directories[*]}"
+    BACKUP_DB_COMMAND="$backup_command"
+}
+
+
