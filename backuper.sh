@@ -119,3 +119,26 @@ install_yq() {
 
     success "yq installed successfully."
 }
+
+menu() {
+    while true; do
+        clear
+        print "======== Backuper Menu [$VERSION] ========"
+        print "1️) Install Backuper"
+        print "2) Exit"
+        print ""
+        input "Choose an option:" choice
+        case $option in
+            1)
+                success "select option one"
+                ;;
+            2)
+                print "Thank you for using @ErfJabs script. Goodbye!"
+                exit 0
+                ;;
+            *)
+                error "Invalid option, Please select a valid option!"
+                ;;
+        esac
+    done
+}
