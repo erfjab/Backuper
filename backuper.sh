@@ -145,11 +145,12 @@ menu() {
 
 start_backup() {
     generate_remark
+    generate_caption
 }
 
 
 generate_remark() {
-    print "[REAMARK]\n"
+    print "[REMARK]\n"
     print "We need a remark for the backup file (e.g., Master, panel, ErfJab).\n"
 
     while true; do
@@ -166,5 +167,23 @@ generate_remark() {
             break
         fi
     done
+    sleep 1
+}
+
+generate_caption() {
+    clear
+    print "[CAPTION]\n"
+    print "You can add a caption for your backup file (e.g., 'The main server of the company').\n"
+
+    input "Enter your caption (Press Enter to skip): " caption
+
+    if [ -z "$caption" ]; then
+        success "No caption provided. Skipping..."
+        caption=""
+    else
+        caption+='\n'
+        success "Caption set: $caption"
+    fi
+
     sleep 1
 }
