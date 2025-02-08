@@ -19,7 +19,7 @@ print() { echo -e "${COLORS[cyan]}$*${COLORS[reset]}"; }
 log() { echo -e "${COLORS[cyan]}[INFO]${COLORS[reset]} $*"; }
 warn() { echo -e "${COLORS[orange]}[WARN]${COLORS[reset]} $*" >&2; }
 error() { echo -e "${COLORS[red]}[ERROR]${COLORS[reset]} $*" >&2; exit 1; }
-success() { echo -e "${COLORS[spring]}✓ ${COLORS[green]}[SUCCESS]${COLORS[reset]} $*"; }
+success() { echo -e "${COLORS[spring]}${COLORS[green]}[SUCCESS]${COLORS[reset]} $*"; }
 
 # Interactive functions
 input() { read -p "$(echo -e "${COLORS[orange]}▶ $1${COLORS[reset]} ")" "$2"; }
