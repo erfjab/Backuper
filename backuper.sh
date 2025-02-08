@@ -9,20 +9,21 @@ readonly OWNER="@ErfJabs"
 
 
 # ANSI color codes
-declare -r -A COLORS=(
-    [RED]='\033[0;31m'
-    [GREEN]='\033[0;32m'
-    [YELLOW]='\033[0;33m'
-    [BLUE]='\033[0;34m'
-    [RESET]='\033[0m'
+declare -A COLORS=(
+    [red]='\033[1;31m' [pink]='\033[1;35m' [green]='\033[1;92m'
+    [spring]='\033[38;5;46m' [orange]='\033[1;38;5;208m' [cyan]='\033[1;36m' [reset]='\033[0m'
 )
 
+# Logging & Printing functions
+print() { echo -e "${COLORS[cyan]}$*${COLORS[reset]}"; }
+log() { echo -e "${COLORS[cyan]}[INFO]${COLORS[reset]} $*"; }
+warn() { echo -e "${COLORS[orange]}[WARN]${COLORS[reset]} $*" >&2; }
+error() { echo -e "${COLORS[red]}[ERROR]${COLORS[reset]} $*" >&2; exit 1; }
+success() { echo -e "${COLORS[spring]}✓ ${COLORS[green]}[SUCCESS]${COLORS[reset]} $*"; }
 
-# Logging functions
-log() { printf "${COLORS[BLUE]}[INFO]${COLORS[RESET]} %s\n" "$*"; }
-warn() { printf "${COLORS[YELLOW]}[WARN]${COLORS[RESET]} %s\n" "$*" >&2; }
-error() { printf "${COLORS[RED]}[ERROR]${COLORS[RESET]} %s\n" "$*" >&2; exit 1; }
-success() { printf "${COLORS[GREEN]}[SUCCESS]${COLORS[RESET]} %s\n" "$*"; }
+# Interactive functions
+input() { read -p "$(echo -e "${COLORS[orange]}▶ $1${COLORS[reset]} ")" "$2"; }
+confirm() { read -p "$(echo -e "${COLORS[pink]}Press any key to continue...${COLORS[reset]}")"; }
 
 # Error handling
 trap 'error "An error occurred. Exiting..."' ERR
@@ -118,5 +119,3 @@ install_yq() {
 
     success "yq installed successfully."
 }
-
-
