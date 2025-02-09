@@ -149,6 +149,7 @@ start_backup() {
     generate_caption
     generate_timer
     generate_template
+    toggle_directories
     generate_platform
     generate_password
     generate_script
@@ -244,7 +245,6 @@ generate_template() {
                 break
                 ;;
             0)
-                success "You Chose Custom"
                 break
                 ;;
             *)
@@ -280,6 +280,35 @@ add_directories() {
             DIRECTORIES+=("$item")
         fi
     done
+}
+
+toggle_directories() {
+    clear
+    print "[TOGGLE DIRECTORIES]\n"
+    print "Enter directories to add or remove. Type 'done' when finished.\n"
+    
+    while true; do
+        print "\nCurrent directories:"
+        for dir in "${DIRECTORIES[@]}"; do
+            [[ -n "$dir" ]] && success "\t- $dir"
+        done
+        print ""
+
+        input "Enter a path (or 'done' to finish): " path
+
+        if [[ "$path" == "done" ]]; then
+            break
+        elif [[ ! -e "$path" ]]; then
+            wrong "Path does not exist: $path"
+        elif [[ " ${DIRECTORIES[*]} " =~ " ${path} " ]]; then
+            DIRECTORIES=("${DIRECTORIES[@]/$path}")
+            success "Removed from list: $path"
+        else
+            DIRECTORIES+=("$path")
+            success "Added to list: $path"
+        fi
+    done
+    BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
 }
 
 marzneshin_progress() {
@@ -340,16 +369,17 @@ marzneshin_progress() {
 
 generate_password() {
     clear
+    print "[PASSWORD]\n"
     COMPRESS="zip -9 -r"
     while true; do
         input "Do you want to password protect the archive? (y/n): " PASSWORD
         case $PASSWORD in
             [Yy]*)
                 while true; do
-                    input "Enter the password for the archive: " archive_password
-                    input "Confirm the password: " confirm_password
+                    input "Enter the password for the archive: " PASSWORD
+                    input "Confirm the password: " CONFIRM_PASSWORD
                     
-                    if [ "$archive_password" == "$confirm_password" ]; then
+                    if [ "$PASSWORD" == "$CONFIRM_PASSWORD" ]; then
                         success "Password confirmed."
                         COMPRESS="$COMPRESS -e -P $PASSWORD"
                         break 2
@@ -454,11 +484,13 @@ ip=\$(hostname -I | awk '{print \$1}')
 timestamp=\$(TZ='Asia/Tehran' date +%m%d-%H%M)
 caption="${CAPTION}"
 backup_name="/root/\${timestamp}_${REMARK}${BACKUP_SUFFIX}"
-db_backup_path="/root/${REMARK}_db_backup.sql"
 
 # Clean up old backup files (only specific backup files)
 rm -rf *"_${REMARK}${BACKUP_SUFFIX}" 2>/dev/null || true
-rm -rf "$DB_PATH" 2>/dev/null || true
+
+if [[ -n "$DB_PATH" ]]; then
+    rm -rf "$DB_PATH" 2>/dev/null || true
+fi
 
 # Backup database
 $(echo -e "$BACKUP_DB_COMMAND")
