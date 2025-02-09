@@ -33,7 +33,6 @@ check_root() {
     [[ $EUID -eq 0 ]] || error "This script must be run as root"
 }
 
-# Detect package manager
 detect_package_manager() {
     if command -v apt-get &>/dev/null; then
         echo "apt"
@@ -48,7 +47,6 @@ detect_package_manager() {
     fi
 }
 
-# Update the OS
 update_os() {
     local package_manager=$(detect_package_manager)
     log "Updating the system using $package_manager..."
@@ -67,23 +65,9 @@ update_os() {
     success "System updated successfully"
 }
 
-# Install dependencies
 install_dependencies() {
     local package_manager=$(detect_package_manager)
-    local packages=("curl" "wget" "zip" "cron")
-
-    # Add MySQL/MariaDB client based on OS
-    case $package_manager in
-        apt)
-            packages+=("mysql-client" "mariadb-client")
-            ;;
-        dnf|yum)
-            packages+=("mysql" "mariadb")
-            ;;
-        pacman)
-            packages+=("mariadb-clients")
-            ;;
-    esac
+    local packages=("wget" "zip" "cron" "msmtp" "mutt")
 
     log "Installing dependencies: ${packages[*]}..."
     
@@ -101,7 +85,6 @@ install_dependencies() {
     success "Dependencies installed successfully"
 }
 
-# Install yq
 install_yq() {
     if command -v yq &>/dev/null; then
         success "yq is already installed."
@@ -121,6 +104,9 @@ install_yq() {
 }
 
 menu() {
+    update_os
+    install_dependencies
+    install_yq
     while true; do
         clear
         print "======== Backuper Menu [$VERSION] ========"
@@ -403,6 +389,7 @@ generate_platform() {
     print "[PLATFORM]\n"
     print "Select one platform to send your backup.\n"
     print "1) Telegram"
+    print "2) Gmail"
     print ""
 
     while true; do
@@ -414,6 +401,11 @@ generate_platform() {
                 telegram_progress
                 break
                 ;;
+            2)
+                PLATFORM="gmail"
+                gmail_progress
+                break
+                ;;
             *)
                 wrong "Invalid option, Please select with number."
                 ;;
@@ -421,6 +413,7 @@ generate_platform() {
     done
     sleep 1
 }
+
 
 telegram_progress() {
     clear
@@ -468,6 +461,56 @@ telegram_progress() {
     success "Telegram configuration completed successfully."
     sleep 1
 }
+
+gmail_progress() {
+    clear
+    print "[GMAIL]\n"
+    print "To use Gmail, you need to provide your email and an app password.\n"
+    print "🔴 Do NOT use your real password! Generate an 'App Password' from Google settings.\n"
+
+    while true; do
+        input "Enter your Gmail address: " GMAIL_ADDRESS
+        if [[ -z "$GMAIL_ADDRESS" ]]; then
+            wrong "Email cannot be empty!"
+        elif [[ ! "$GMAIL_ADDRESS" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+            wrong "Invalid email format!"
+        else
+            break
+        fi
+    done
+
+    while true; do
+        input "Enter your Gmail app password: " GMAIL_PASSWORD
+        if [[ -z "$GMAIL_PASSWORD" ]]; then
+            wrong "Password cannot be empty!"
+        else
+            break
+        fi
+    done
+
+    log "Checking Gmail SMTP connection..."
+
+    echo -e "Subject: Backuper Test Email\n\nHi, Backuper Test Message!" | msmtp \
+        --host=smtp.gmail.com \
+        --port=587 \
+        --tls=on \
+        --auth=on \
+        --user="$GMAIL_ADDRESS" \
+        --passwordeval="echo '$GMAIL_PASSWORD'" \
+        -f "$GMAIL_ADDRESS" \
+        "$GMAIL_ADDRESS"
+
+    if [[ $? -eq 0 ]]; then
+        success "Gmail configuration completed successfully."
+
+        PLATFORM_COMMAND="echo 'Hi, Backuper Test Message!' | mutt -s 'Backup File $(date '+%Y-%m-%d')' -a \"\$FILE\" -- \"$GMAIL_ADDRESS\""
+    else
+        error "Failed to authenticate with Gmail! Check your email or app password."
+    fi
+
+    sleep 1
+}
+
 
 generate_script() {
     clear
@@ -558,5 +601,6 @@ EOL
 }
 
 # Main execution
+clear
 check_root
 menu
