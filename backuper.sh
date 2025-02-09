@@ -679,6 +679,8 @@ else
     exit 1
 fi
 
+rm -rf *"_${REMARK}${BACKUP_SUFFIX}" 2>/dev/null || true
+
 EOL
 
     # Make the script executable
