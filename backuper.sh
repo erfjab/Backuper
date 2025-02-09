@@ -503,7 +503,7 @@ gmail_progress() {
             fi
         done
 
-        log "Checking Gmail SMTP connection..."
+        log "Testing Gmail SMTP authentication..."
 
         echo -e "Subject: Test Email\n\nThis is a test message." | msmtp \
             --host=smtp.gmail.com \
@@ -516,12 +516,38 @@ gmail_progress() {
             "$GMAIL_ADDRESS"
 
         if [[ $? -eq 0 ]]; then
-            success "Gmail configuration completed successfully."
+            success "Authentication successful! Configuring msmtp and mutt..."
+
+            cat > ~/.msmtprc <<EOF
+account gmail
+host smtp.gmail.com
+port 587
+auth on
+tls on
+tls_starttls on
+user $GMAIL_ADDRESS
+password $GMAIL_PASSWORD
+from $GMAIL_ADDRESS
+logfile ~/.msmtp.log
+account default : gmail
+EOF
+
+            chmod 600 ~/.msmtprc  
+
+            cat > ~/.muttrc <<EOF
+set sendmail="/usr/bin/msmtp"
+set use_from=yes
+set realname="Backup System"
+set from="$GMAIL_ADDRESS"
+set envelope_from=yes
+EOF
+
+            chmod 600 ~/.muttrc
 
             PLATFORM_COMMAND="echo 'Backup file is attached.' | mutt -s 'Backup File $(date '+%Y-%m-%d')' -a \"\$FILE\" -- \"$GMAIL_ADDRESS\""
             break
         else
-            wrong "Failed to authenticate with Gmail! Check your email or app password and try again."
+            wrong "Authentication failed! Check your email or app password and try again."
             sleep 3
             clear
         fi
@@ -529,7 +555,6 @@ gmail_progress() {
 
     sleep 1
 }
-
 
 generate_script() {
     clear
