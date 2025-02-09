@@ -429,7 +429,6 @@ generate_platform() {
     sleep 1
 }
 
-
 telegram_progress() {
     clear
     print "[TELEGRAM]\n"
@@ -484,44 +483,49 @@ gmail_progress() {
     print "🔴 Do NOT use your real password! Generate an 'App Password' from Google settings.\n"
 
     while true; do
-        input "Enter your Gmail address: " GMAIL_ADDRESS
-        if [[ -z "$GMAIL_ADDRESS" ]]; then
-            wrong "Email cannot be empty!"
-        elif [[ ! "$GMAIL_ADDRESS" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
-            wrong "Invalid email format!"
-        else
+        while true; do
+            input "Enter your Gmail address: " GMAIL_ADDRESS
+            if [[ -z "$GMAIL_ADDRESS" ]]; then
+                wrong "Email cannot be empty!"
+            elif [[ ! "$GMAIL_ADDRESS" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+                wrong "Invalid email format!"
+            else
+                break
+            fi
+        done
+
+        while true; do
+            input "Enter your Gmail app password: " GMAIL_PASSWORD
+            if [[ -z "$GMAIL_PASSWORD" ]]; then
+                wrong "Password cannot be empty!"
+            else
+                break
+            fi
+        done
+
+        log "Checking Gmail SMTP connection..."
+
+        echo -e "Subject: Test Email\n\nThis is a test message." | msmtp \
+            --host=smtp.gmail.com \
+            --port=587 \
+            --tls=on \
+            --auth=on \
+            --user="$GMAIL_ADDRESS" \
+            --passwordeval="echo '$GMAIL_PASSWORD'" \
+            -f "$GMAIL_ADDRESS" \
+            "$GMAIL_ADDRESS"
+
+        if [[ $? -eq 0 ]]; then
+            success "Gmail configuration completed successfully."
+
+            PLATFORM_COMMAND="echo 'Backup file is attached.' | mutt -s 'Backup File $(date '+%Y-%m-%d')' -a \"\$FILE\" -- \"$GMAIL_ADDRESS\""
             break
+        else
+            wrong "Failed to authenticate with Gmail! Check your email or app password and try again."
+            sleep 3
+            clear
         fi
     done
-
-    while true; do
-        input "Enter your Gmail app password: " GMAIL_PASSWORD
-        if [[ -z "$GMAIL_PASSWORD" ]]; then
-            wrong "Password cannot be empty!"
-        else
-            break
-        fi
-    done
-
-    log "Checking Gmail SMTP connection..."
-
-    echo -e "Subject: Backuper Test Email\n\nHi, Backuper Test Message!" | msmtp \
-        --host=smtp.gmail.com \
-        --port=587 \
-        --tls=on \
-        --auth=on \
-        --user="$GMAIL_ADDRESS" \
-        --passwordeval="echo '$GMAIL_PASSWORD'" \
-        -f "$GMAIL_ADDRESS" \
-        "$GMAIL_ADDRESS"
-
-    if [[ $? -eq 0 ]]; then
-        success "Gmail configuration completed successfully."
-
-        PLATFORM_COMMAND="echo 'Hi, Backuper Test Message!' | mutt -s 'Backup File $(date '+%Y-%m-%d')' -a \"\$FILE\" -- \"$GMAIL_ADDRESS\""
-    else
-        error "Failed to authenticate with Gmail! Check your email or app password."
-    fi
 
     sleep 1
 }
@@ -615,7 +619,11 @@ EOL
     fi
 }
 
-# Main execution
-clear
-check_root
-menu
+
+main() {
+    clear
+    check_root
+    menu
+}
+
+main
