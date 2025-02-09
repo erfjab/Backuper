@@ -150,6 +150,7 @@ start_backup() {
     generate_timer
     generate_template
     generate_platform
+    generate_password
     generate_script
 }
 
@@ -337,6 +338,36 @@ marzneshin_progress() {
     log "Complete Marzneshin"
 }
 
+generate_password() {
+    clear
+    COMPRESS="zip -9 -r"
+    while true; do
+        input "Do you want to password protect the archive? (y/n): " PASSWORD
+        case $PASSWORD in
+            [Yy]*)
+                while true; do
+                    input "Enter the password for the archive: " archive_password
+                    input "Confirm the password: " confirm_password
+                    
+                    if [ "$archive_password" == "$confirm_password" ]; then
+                        success "Password confirmed."
+                        COMPRESS="$COMPRESS -e -P $PASSWORD"
+                        break 2
+                    else
+                        wrong "Passwords do not match. Please try again."
+                    fi
+                done
+                ;;
+            [Nn]*)
+                break
+                ;;
+            *)
+                wrong "Please answer y or n."
+                ;;
+        esac
+    done
+}
+
 generate_platform() {
     clear
     print "[PLATFORM]\n"
@@ -433,7 +464,7 @@ rm -rf "$DB_PATH" 2>/dev/null || true
 $(echo -e "$BACKUP_DB_COMMAND")
 
 # Compress files
-if ! zip -9 -r "\$backup_name" ${BACKUP_DIRECTORIES[@]}; then
+if ! $COMPRESS "\$backup_name" ${BACKUP_DIRECTORIES[@]}; then
     message="Failed to compress ${REMARK} files. Please check the server."
     echo "\$message"
     exit 1
