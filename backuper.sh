@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Global constants
-readonly SCRIPT_SUFFIX="_backuper.sh"
+readonly SCRIPT_SUFFIX="_backuper_script.sh"
 readonly BACKUP_SUFFIX="_backuper.zip"
 readonly DATABASE_SUFFIX="_backuper.sql"
 readonly VERSION="v0.3.0"
@@ -18,6 +18,7 @@ print() { echo -e "${COLORS[cyan]}$*${COLORS[reset]}"; }
 log() { echo -e "${COLORS[cyan]}[INFO]${COLORS[reset]} $*"; }
 warn() { echo -e "${COLORS[orange]}[WARN]${COLORS[reset]} $*" >&2; }
 error() { echo -e "${COLORS[red]}[ERROR]${COLORS[reset]} $*" >&2; exit 1; }
+wrong() { echo -e "${COLORS[red]}[WRONG]${COLORS[reset]} $*" >&2; }
 success() { echo -e "${COLORS[spring]}${COLORS[green]}[SUCCESS]${COLORS[reset]} $*"; }
 
 # Interactive functions
@@ -121,8 +122,9 @@ install_yq() {
 
 menu() {
     while true; do
-        
+        clear
         print "======== Backuper Menu [$VERSION] ========"
+        print ""
         print "1️) Install Backuper"
         print "2) Exit"
         print ""
@@ -136,7 +138,7 @@ menu() {
                 exit 0
                 ;;
             *)
-                error "Invalid option, Please select a valid option!"
+                wrong "Invalid option, Please select a valid option!"
                 ;;
         esac
     done
@@ -152,6 +154,7 @@ start_backup() {
 }
 
 generate_remark() {
+    clear
     print "[REMARK]\n"
     print "We need a remark for the backup file (e.g., Master, panel, ErfJab).\n"
 
@@ -159,11 +162,11 @@ generate_remark() {
         input "Enter a remark: " REMARK
 
         if ! [[ "$REMARK" =~ ^[a-zA-Z0-9_]+$ ]]; then
-            error "Remark must contain only letters, numbers, or underscores."
+            wrong "Remark must contain only letters, numbers, or underscores."
         elif [ ${#REMARK} -lt 3 ]; then
-            error "Remark must be at least 3 characters long."
+            wrong "Remark must be at least 3 characters long."
         elif [ -e "${REMARK}${SCRIPT_SUFFIX}" ]; then
-            error "File ${REMARK}${SCRIPT_SUFFIX} already exists. Choose a different remark."
+            wrong "File ${REMARK}${SCRIPT_SUFFIX} already exists. Choose a different remark."
         else
             success "Backup remark: $REMARK"
             break
@@ -173,7 +176,7 @@ generate_remark() {
 }
 
 generate_caption() {
-    
+    clear
     print "[CAPTION]\n"
     print "You can add a caption for your backup file (e.g., 'The main server of the company').\n"
 
@@ -191,7 +194,7 @@ generate_caption() {
 }
 
 generate_timer() {
-    
+    clear
     print "[TIMER]\n"
     print "Enter a time interval in minutes for sending backups."
     print "For example, '10' means backups will be sent every 10 minutes.\n"
@@ -200,9 +203,9 @@ generate_timer() {
         input "Enter the number of minutes (1-1440): " minutes
 
         if ! [[ "$minutes" =~ ^[0-9]+$ ]]; then
-            error "Please enter a valid number."
+            wrong "Please enter a valid number."
         elif [ "$minutes" -lt 1 ] || [ "$minutes" -gt 1440 ]; then
-            error "Number must be between 1 and 1440."
+            wrong "Number must be between 1 and 1440."
         else
             break
         fi
@@ -226,7 +229,7 @@ generate_timer() {
 }
 
 generate_template() {
-    
+    clear
     print "[TEMPLATE]\n"
     print "Choose a backup template. You can add or remove custom DIRECTORIES after selecting.\n"
     print "1) Marzneshin"
@@ -244,7 +247,7 @@ generate_template() {
                 break
                 ;;
             *)
-                error "Invalid option. Please choose a valid number!"
+                wrong "Invalid option. Please choose a valid number!"
                 ;;
         esac
     done
@@ -287,28 +290,28 @@ marzneshin_progress() {
 
     # Extract database configuration
     local db_type db_name db_password db_port
-    db_type=$(yq eval '.services.db.image' "$docker_compose_file")
-    db_name=$(yq eval '.services.db.environment.MARIADB_DATABASE // .services.db.environment.MYSQL_DATABASE' "$docker_compose_file")
-    db_password=$(yq eval '.services.db.environment.MARIADB_ROOT_PASSWORD // .services.db.environment.MYSQL_ROOT_PASSWORD' "$docker_compose_file")
-    db_port=$(yq eval '.services.db.ports[0]' "$docker_compose_file" | cut -d':' -f2)
+    DB_TYPE=$(yq eval '.services.db.image' "$docker_compose_file")
+    DB_NAME=$(yq eval '.services.db.environment.MARIADB_DATABASE // .services.db.environment.MYSQL_DATABASE' "$docker_compose_file")
+    DB_PASSWORD=$(yq eval '.services.db.environment.MARIADB_ROOT_PASSWORD // .services.db.environment.MYSQL_ROOT_PASSWORD' "$docker_compose_file")
+    DB_PORT=$(yq eval '.services.db.ports[0]' "$docker_compose_file" | cut -d':' -f2)
 
     # Determine database type
-    if [[ "$db_type" == *"mariadb"* ]]; then
-        db_type="mariadb"
-    elif [[ "$db_type" == *"mysql"* ]]; then
-        db_type="mysql"
+    if [[ "$DB_TYPE" == *"mariadb"* ]]; then
+        DB_TYPE="mariadb"
+    elif [[ "$DB_TYPE" == *"mysql"* ]]; then
+        DB_TYPE="mysql"
     else
-        db_type="sqlite"
+        DB_TYPE="sqlite"
     fi
 
     # Validate database password for non-sqlite databases
-    if [[ "$db_type" != "sqlite" && -z "$db_password" ]]; then
+    if [[ "$DB_TYPE" != "sqlite" && -z "$DB_PASSWORD" ]]; then
         error "Database password not found"
         return 1
     fi
 
     # Setup backup configuration
-    local db_backup_path="/root/${REMARK}${DATABASE_SUFFIX}"
+    local DB_PATH="/root/${REMARK}${DATABASE_SUFFIX}"
     DIRECTORIES=()
 
     # Scan default DIRECTORIES
@@ -324,35 +327,34 @@ marzneshin_progress() {
     done
 
     # Generate backup command for non-sqlite databases
-    local backup_command=""
+    local BACKUP_DB_COMMAND=""
     if [[ "$db_type" != "sqlite" ]]; then
-        backup_command="mysqldump -h 127.0.0.1 -P $db_port -u root -p'$db_password' --column-statistics=0 '$db_name' > $db_backup_path"
+        BACKUP_DB_COMMAND="mysqldump -h 127.0.0.1 -P $DB_PORT -u root -p'$DB_PASSWORD' --column-statistics=0 '$DB_NAME' > $DB_PATH"
     fi
-
-    # Log success messages
-    success "Backup command generated: $backup_command"
-    success "Backup DIRECTORIES saved"
 
     # Export backup variables
     BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
-    BACKUP_DB_COMMAND="$backup_command"
+    log "Complete Marzneshin"
 }
 
 generate_platform() {
+    clear
     print "[PLATFORM]\n"
     print "Select one platform to send your backup.\n"
     print "1) Telegram"
+    print ""
 
     while true; do
         input "Enter your choice : " choice
 
         case $choice in
             1)
+                PLATFORM="telegram"
                 telegram_progress
                 break
                 ;;
             *)
-                error "Invalid option, Please select with number."
+                wrong "Invalid option, Please select with number."
                 ;;
         esac
     done
@@ -360,74 +362,91 @@ generate_platform() {
 }
 
 telegram_progress() {
+    clear
     print "[TELEGRAM]\n"
     print "To use Telegram, you need to provide a bot token and a chat ID.\n"
 
     while true; do
-        input "Enter the bot token: " bot_token
-        if [[ -z "$bot_token" ]]; then
-            error "Bot token cannot be empty!"
-        elif [[ ! "$bot_token" =~ ^[0-9]+:[a-zA-Z0-9_-]{35}$ ]]; then
-            error "Invalid bot token format!"
+        # Get bot token
+        while true; do
+            input "Enter the bot token: " BOT_TOKEN
+            if [[ -z "$BOT_TOKEN" ]]; then
+                wrong "Bot token cannot be empty!"
+            elif [[ ! "$BOT_TOKEN" =~ ^[0-9]+:[a-zA-Z0-9_-]{35}$ ]]; then
+                wrong "Invalid bot token format!"
+            else
+                break
+            fi
+        done
+
+        # Get chat ID
+        while true; do
+            input "Enter the chat ID: " CHAT_ID
+            if [[ -z "$CHAT_ID" ]]; then
+                wrong "Chat ID cannot be empty!"
+            elif [[ ! "$CHAT_ID" =~ ^-?[0-9]+$ ]]; then
+                wrong "Invalid chat ID format!"
+            else
+                break
+            fi
+        done
+
+        # Validate bot token and chat ID
+        log "Checking Telegram bot..."
+        response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" -d chat_id="$CHAT_ID" -d text="Hi, Backuper Test Message!")
+        if [[ "$response" -ne 200 ]]; then
+            wrong "Invalid bot token or chat ID, or Telegram API error!"
         else
+            success "Bot token and chat ID are valid."
             break
         fi
     done
 
-    while true; do
-        input "Enter the chat ID: " chat_id
-        if [[ -z "$chat_id" ]]; then
-            error "Chat ID cannot be empty!"
-        elif [[ ! "$chat_id" =~ ^-?[0-9]+$ ]]; then
-            error "Invalid chat ID format!"
-        else
-            log "Checking Telegram bot..."
-            response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "https://api.telegram.org/bot$bot_token/sendMessage" -d chat_id="$chat_id" -d text="Hi, Backuper Test Message!")
-            if [[ "$response" -ne 200 ]]; then
-                error "Invalid bot token or chat ID, or Telegram API error!"
-            else
-                success "Bot token and chat ID are valid."
-                sleep 1
-                break
-            fi
-        fi
-    done
-    PLATFORM_COMMAND="curl -s -F \"chat_id=$chat_id\" -F \"document=@\$file_to_send\" -F \"caption=\$caption\" -F \"parse_mode=HTML\" \"https://api.telegram.org/bot$bot_token/sendDocument\""
+    # Set the platform command for sending files
+    PLATFORM_COMMAND="curl -s -F \"chat_id=$CHAT_ID\" -F \"document=@\$FILE\" -F \"caption=\$CAPTION\" -F \"parse_mode=HTML\" \"https://api.telegram.org/bot$BOT_TOKEN/sendDocument\""
+    success "Telegram configuration completed successfully."
     sleep 1
 }
 
 generate_script() {
+    clear
     local BACKUP_PATH="/root/${REMARK}${SCRIPT_SUFFIX}"
-    log "Generating backup script: $BACKUP_PATH..."
+    log "Generating backup script: $BACKUP_PATH"
 
     cat <<EOL > "$BACKUP_PATH"
 #!/bin/bash
 
 set -e 
 
+# Variables
 ip=\$(hostname -I | awk '{print \$1}')
 timestamp=\$(TZ='Asia/Tehran' date +%m%d-%H%M)
-backup_name="/root/${REMARK}_\${timestamp}${BACKUP_SUFFIX}"
 caption="${CAPTION}"
+backup_name="/root/\${timestamp}_${REMARK}${BACKUP_SUFFIX}"
+db_backup_path="/root/${REMARK}_db_backup.sql"
 
-rm -f "\$backup_name"*
-rm -f *"${DATABASE_SUFFIX}"
+# Clean up old backup files (only specific backup files)
+rm -rf "_${REMARK}${BACKUP_SUFFIX}" 2>/dev/null || true
+rm -rf "$DB_PATH" 2>/dev/null || true
 
+# Backup database
 $(echo -e "$BACKUP_DB_COMMAND")
 
+# Compress files
 if ! zip -9 -r "\$backup_name" ${BACKUP_DIRECTORIES[@]}; then
     message="Failed to compress ${REMARK} files. Please check the server."
     echo "\$message"
     exit 1
 fi
 
+# Send backup files
 if ls \${backup_name}* > /dev/null 2>&1; then
-    for file_to_send in \${backup_name}*; do
-        echo "Sending file: \$file_to_send"
+    for FILE in \${backup_name}*; do
+        echo "Sending file: \$FILE"
         if $PLATFORM_COMMAND; then
-            echo "Backup part sent successfully: \$file_to_send"
+            echo "Backup part sent successfully: \$FILE"
         else
-            message="Failed to send ${REMARK} backup part: \$file_to_send. Please check the server."
+            message="Failed to send ${REMARK} backup part: \$FILE. Please check the server."
             echo "\$message"
             exit 1
         fi
@@ -439,16 +458,18 @@ else
     exit 1
 fi
 
-rm -f "\$backup_name"*
-
 EOL
 
+    # Make the script executable
     chmod +x "$BACKUP_PATH"
     success "Backup script created: $BACKUP_PATH"
 
+    # Run the backup script
     log "Running the backup script..."
-    if output=$(bash "$BACKUP_PATH"); then
+    if output=$(bash "$BACKUP_PATH" 2>&1); then
         success "Backup script run successfully."
+
+        # Set up cron job
         log "Setting up cron job..."
         if (crontab -l 2>/dev/null; echo "$TIMER $BACKUP_PATH") | crontab -; then
             success "Cron job set up successfully. Backups will run every $minutes minutes."
@@ -457,12 +478,13 @@ EOL
             exit 1
         fi
 
+        # Final success message
         success "🎉 Your backup system is set up and running!"
         success "Backup script location: $BACKUP_PATH"
         success "Cron job: Every $minutes minutes"
         success "First backup created and sent."
         success "Thank you for using @ErfJabs backup script. Enjoy automated backups!"
-        exit 1
+        exit 0
     else
         error "Failed to run backup script. Output:"
         error "$output"
