@@ -112,7 +112,8 @@ menu() {
         print "======== Backuper Menu [$VERSION] ========"
         print ""
         print "1️) Install Backuper"
-        print "2) Exit"
+        print "2) Remove All Backupers"
+        print "3) Exit"
         print ""
         input "Choose an option:" choice
         case $choice in
@@ -120,6 +121,9 @@ menu() {
                 start_backup
                 ;;
             2)
+                cleanup_backups
+                ;;
+            3)
                 print "Thank you for using @ErfJabs script. Goodbye!"
                 exit 0
                 ;;
@@ -128,6 +132,17 @@ menu() {
                 ;;
         esac
     done
+}
+
+cleanup_backups() {
+    print "Removing all backups and cron jobs..."
+    
+    rm -rf /root/*"$BACKUP_SUFFIX" /root/*"$SCRIPT_SUFFIX" /root/*"$DATABASE_SUFFIX"
+    
+    crontab -l | grep -v "$SCRIPT_SUFFIX" | crontab -
+
+    success "All backups and cron jobs have been removed."
+    sleep 1
 }
 
 start_backup() {
