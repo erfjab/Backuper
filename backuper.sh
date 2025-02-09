@@ -237,7 +237,8 @@ generate_template() {
     print "Choose a backup template. You can add or remove custom DIRECTORIES after selecting.\n"
     print "1) Marzneshin"
     print "2) Marzban"
-    print "3) X-UI"
+    print "3) X-ui"
+    print "4) S-ui"
     print "0) Custom"
     print ""
     while true; do
@@ -253,6 +254,10 @@ generate_template() {
                 ;;
             3)
                 xui_template
+                break
+                ;;
+            4)
+                sui_template
                 break
                 ;;
             0)
@@ -339,7 +344,28 @@ xui_template() {
 
     # Export backup variables
     BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
-    log "Complete Xui"
+    log "Complete X-ui"
+    confirm
+}
+
+sui_template() {
+    log "Checking S-ui configuration..."
+    
+    # Set default value for XUI_DB_FOLDER if not set
+    local SUI_DB_FOLDER="${SUI_DB_FOLDER:-/usr/local/s-ui/db}"
+
+    # Check if the directory exists
+    if [ ! -d "$SUI_DB_FOLDER" ]; then
+        error "Directory not found: $SUI_DB_FOLDER"
+        return 1
+    fi
+
+    # Add the directory to BACKUP_DIRECTORIES
+    add_directories "$SUI_DB_FOLDER"
+
+    # Export backup variables
+    BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
+    log "Complete S-ui"
     confirm
 }
 
