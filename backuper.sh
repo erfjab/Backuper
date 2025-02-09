@@ -438,32 +438,35 @@ marzban_template() {
 
 generate_password() {
     clear
-    print "[PASSWORD]\n"
+    print "[PASSWORD PROTECTION]\n"
+    print "You can set a password for the archive. The password must contain both letters and numbers, and be at least 8 characters long.\n"
+    print "If you don't want a password, just press Enter.\n"
+
     COMPRESS="zip -9 -r"
     while true; do
-        input "Do you want to password protect the archive? (y/n): " PASSWORD
-        case $PASSWORD in
-            [Yy]*)
-                while true; do
-                    input "Enter the password for the archive: " PASSWORD
-                    input "Confirm the password: " CONFIRM_PASSWORD
-                    
-                    if [ "$PASSWORD" == "$CONFIRM_PASSWORD" ]; then
-                        success "Password confirmed."
-                        COMPRESS="$COMPRESS -e -P $PASSWORD"
-                        break 2
-                    else
-                        wrong "Passwords do not match. Please try again."
-                    fi
-                done
-                ;;
-            [Nn]*)
-                break
-                ;;
-            *)
-                wrong "Please answer y or n."
-                ;;
-        esac
+        input "Enter the password for the archive (or press Enter to skip): " PASSWORD
+        
+        # If password is empty, skip password protection
+        if [ -z "$PASSWORD" ]; then
+            success "No password will be set for the archive."
+            break
+        fi
+
+        # Validate password
+        if [[ ! "$PASSWORD" =~ ^[a-zA-Z0-9]{8,}$ ]]; then
+            wrong "Password must be at least 8 characters long and contain only letters and numbers. Please try again."
+            continue
+        fi
+
+        input "Confirm the password: " CONFIRM_PASSWORD
+        
+        if [ "$PASSWORD" == "$CONFIRM_PASSWORD" ]; then
+            success "Password confirmed."
+            COMPRESS="$COMPRESS -e -P $PASSWORD"
+            break
+        else
+            wrong "Passwords do not match. Please try again."
+        fi
     done
 }
 
