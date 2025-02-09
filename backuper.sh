@@ -237,6 +237,7 @@ generate_template() {
     print "Choose a backup template. You can add or remove custom DIRECTORIES after selecting.\n"
     print "1) Marzneshin"
     print "2) Marzban"
+    print "3) X-UI"
     print "0) Custom"
     print ""
     while true; do
@@ -248,6 +249,10 @@ generate_template() {
                 ;;
             2)
                 marzban_template
+                break
+                ;;
+            3)
+                xui_template
                 break
                 ;;
             0)
@@ -315,6 +320,27 @@ toggle_directories() {
         fi
     done
     BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
+}
+
+xui_template() {
+    log "Checking X-ui configuration..."
+    
+    # Set default value for XUI_DB_FOLDER if not set
+    local XUI_DB_FOLDER="${XUI_DB_FOLDER:-/etc/x-ui}"
+
+    # Check if the directory exists
+    if [ ! -d "$XUI_DB_FOLDER" ]; then
+        error "Directory not found: $XUI_DB_FOLDER"
+        return 1
+    fi
+
+    # Add the directory to BACKUP_DIRECTORIES
+    add_directories "$XUI_DB_FOLDER"
+
+    # Export backup variables
+    BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
+    log "Complete Xui"
+    confirm
 }
 
 marzneshin_template() {
