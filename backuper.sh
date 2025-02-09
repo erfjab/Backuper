@@ -1,12 +1,11 @@
 #!/bin/bash
 
-
 # Global constants
 readonly SCRIPT_SUFFIX="_backuper.sh"
 readonly BACKUP_SUFFIX="_backuper.zip"
+readonly DATABASE_SUFFIX="_backuper.sql"
 readonly VERSION="v0.3.0"
 readonly OWNER="@ErfJabs"
-
 
 # ANSI color codes
 declare -A COLORS=(
@@ -122,13 +121,13 @@ install_yq() {
 
 menu() {
     while true; do
-        clear
+        
         print "======== Backuper Menu [$VERSION] ========"
         print "1️) Install Backuper"
         print "2) Exit"
         print ""
         input "Choose an option:" choice
-        case $option in
+        case $choice in
             1)
                 start_backup
                 ;;
@@ -149,24 +148,24 @@ start_backup() {
     generate_timer
     generate_template
     generate_platform
+    generate_script
 }
-
 
 generate_remark() {
     print "[REMARK]\n"
     print "We need a remark for the backup file (e.g., Master, panel, ErfJab).\n"
 
     while true; do
-        input "Enter a remark: " remark
+        input "Enter a remark: " REMARK
 
-        if ! [[ "$remark" =~ ^[a-zA-Z0-9_]+$ ]]; then
-            error "remark must contain only letters, numbers, or underscores."
-        elif [ ${#remark} -lt 3 ]; then
-            error "remark must be at least 3 characters long."
-        elif [ -e "${remark}_backuper.sh" ]; then
-            error "File ${remark}_backuper.sh already exists. Choose a different remark."
+        if ! [[ "$REMARK" =~ ^[a-zA-Z0-9_]+$ ]]; then
+            error "Remark must contain only letters, numbers, or underscores."
+        elif [ ${#REMARK} -lt 3 ]; then
+            error "Remark must be at least 3 characters long."
+        elif [ -e "${REMARK}${SCRIPT_SUFFIX}" ]; then
+            error "File ${REMARK}${SCRIPT_SUFFIX} already exists. Choose a different remark."
         else
-            success "Backup remark: $remark"
+            success "Backup remark: $REMARK"
             break
         fi
     done
@@ -174,25 +173,25 @@ generate_remark() {
 }
 
 generate_caption() {
-    clear
+    
     print "[CAPTION]\n"
     print "You can add a caption for your backup file (e.g., 'The main server of the company').\n"
 
-    input "Enter your caption (Press Enter to skip): " caption
+    input "Enter your caption (Press Enter to skip): " CAPTION
 
-    if [ -z "$caption" ]; then
+    if [ -z "$CAPTION" ]; then
         success "No caption provided. Skipping..."
-        caption=""
+        CAPTION=""
     else
-        caption+='\n'
-        success "Caption set: $caption"
+        CAPTION+='\n'
+        success "Caption set: $CAPTION"
     fi
 
     sleep 1
 }
 
 generate_timer() {
-    clear
+    
     print "[TIMER]\n"
     print "Enter a time interval in minutes for sending backups."
     print "For example, '10' means backups will be sent every 10 minutes.\n"
@@ -210,32 +209,32 @@ generate_timer() {
     done
 
     if [ "$minutes" -le 59 ]; then
-        cron_timer="*/$minutes * * * *"
+        TIMER="*/$minutes * * * *"
     elif [ "$minutes" -le 1439 ]; then
         hours=$((minutes / 60))
         remaining_minutes=$((minutes % 60))
         if [ "$remaining_minutes" -eq 0 ]; then
-            cron_timer="0 */$hours * * *"
+            TIMER="0 */$hours * * *"
         else
-            cron_timer="*/$remaining_minutes */$hours * * *"
+            TIMER="*/$remaining_minutes */$hours * * *"
         fi
     else
-        cron_timer="0 0 * * *" 
+        TIMER="0 0 * * *" 
     fi
-    success "Cron job set to run every $minutes minutes: $cron_timer"
+    success "Cron job set to run every $minutes minutes: $TIMER"
     sleep 1
 }
 
 generate_template() {
-    clear
+    
     print "[TEMPLATE]\n"
-    print "Choose a backup template. You can add or remove custom directories after selecting.\n"
+    print "Choose a backup template. You can add or remove custom DIRECTORIES after selecting.\n"
     print "1) Marzneshin"
     print "0) Custom"
     print ""
     while true; do
-        input "Enter your template number: " template
-        case $template in
+        input "Enter your template number: " TEMPLATE
+        case $TEMPLATE in
             1)
                 marzneshin_progress
                 break
@@ -253,13 +252,14 @@ generate_template() {
 
 add_directories() {
     local base_dir="$1"
-    local exclude_patterns=("${@:2}")  # Get all arguments after the first as exclude patterns
 
     # Check if base directory exists
     [[ ! -d "$base_dir" ]] && { warn "Directory not found: $base_dir"; return; }
 
     # Find directories and filter based on exclude patterns
-    while IFS= read -r -d '' item; do
+    mapfile -t items < <(find "$base_dir" -mindepth 1 -maxdepth 1 -type d \( -name "*mysql*" -prune -o -name "*mariadb*" -prune \) -o -print)
+
+    for item in "${items[@]}"; do
         local exclude_item=false
 
         # Check if item matches any exclude pattern
@@ -273,9 +273,9 @@ add_directories() {
         # Add item to backup list if it doesn't match any exclude pattern
         if ! $exclude_item; then
             success "Added to backup: $item"
-            directories+=("$item")
+            DIRECTORIES+=("$item")
         fi
-    done < <(find "$base_dir" -mindepth 1 -maxdepth 1 -type d -print0)
+    done
 }
 
 marzneshin_progress() {
@@ -293,7 +293,11 @@ marzneshin_progress() {
     db_port=$(yq eval '.services.db.ports[0]' "$docker_compose_file" | cut -d':' -f2)
 
     # Determine database type
-    if [[ "$db_type" != *"mariadb"* && "$db_type" != *"mysql"* ]]; then
+    if [[ "$db_type" == *"mariadb"* ]]; then
+        db_type="mariadb"
+    elif [[ "$db_type" == *"mysql"* ]]; then
+        db_type="mysql"
+    else
         db_type="sqlite"
     fi
 
@@ -304,12 +308,11 @@ marzneshin_progress() {
     fi
 
     # Setup backup configuration
-    local db_backup_path="/root/${name}_db_backup.sql"
-    local directories=()
+    local db_backup_path="/root/${REMARK}${DATABASE_SUFFIX}"
+    DIRECTORIES=()
 
-    # Scan default directories
-    log "Scanning directories..."
-    add_directories "/var/lib/marzneshin" "mysql" "mariadb"
+    # Scan default DIRECTORIES
+    log "Scanning DIRECTORIES..."
     add_directories "/etc/opt/marzneshin"
 
     # Extract volumes from docker-compose
@@ -323,15 +326,15 @@ marzneshin_progress() {
     # Generate backup command for non-sqlite databases
     local backup_command=""
     if [[ "$db_type" != "sqlite" ]]; then
-        backup_command="mysqldump -u root -p'$db_password' -P $db_port $db_name > $db_backup_path"
+        backup_command="mysqldump -h 127.0.0.1 -P $db_port -u root -p'$db_password' --column-statistics=0 '$db_name' > $db_backup_path"
     fi
 
     # Log success messages
     success "Backup command generated: $backup_command"
-    success "Backup directories saved"
+    success "Backup DIRECTORIES saved"
 
     # Export backup variables
-    BACKUP_DIRECTORIES="${directories[*]}"
+    BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
     BACKUP_DB_COMMAND="$backup_command"
 }
 
@@ -341,9 +344,9 @@ generate_platform() {
     print "1) Telegram"
 
     while true; do
-        input "Enter your choice : " choise
+        input "Enter your choice : " choice
 
-        case $choise in
+        case $choice in
             1)
                 telegram_progress
                 break
@@ -357,7 +360,6 @@ generate_platform() {
 }
 
 telegram_progress() {
-    clear
     print "[TELEGRAM]\n"
     print "To use Telegram, you need to provide a bot token and a chat ID.\n"
 
@@ -390,5 +392,86 @@ telegram_progress() {
             fi
         fi
     done
+    PLATFORM_COMMAND="curl -s -F \"chat_id=$chat_id\" -F \"document=@\$file_to_send\" -F \"caption=\$caption\" -F \"parse_mode=HTML\" \"https://api.telegram.org/bot$bot_token/sendDocument\""
     sleep 1
 }
+
+generate_script() {
+    local BACKUP_PATH="/root/${REMARK}${SCRIPT_SUFFIX}"
+    log "Generating backup script: $BACKUP_PATH..."
+
+    cat <<EOL > "$BACKUP_PATH"
+#!/bin/bash
+
+set -e 
+
+ip=\$(hostname -I | awk '{print \$1}')
+timestamp=\$(TZ='Asia/Tehran' date +%m%d-%H%M)
+backup_name="/root/${REMARK}_\${timestamp}${BACKUP_SUFFIX}"
+caption="${CAPTION}"
+
+rm -f "\$backup_name"*
+rm -f *"${DATABASE_SUFFIX}"
+
+$(echo -e "$BACKUP_DB_COMMAND")
+
+if ! zip -9 -r "\$backup_name" ${BACKUP_DIRECTORIES[@]}; then
+    message="Failed to compress ${REMARK} files. Please check the server."
+    echo "\$message"
+    exit 1
+fi
+
+if ls \${backup_name}* > /dev/null 2>&1; then
+    for file_to_send in \${backup_name}*; do
+        echo "Sending file: \$file_to_send"
+        if $PLATFORM_COMMAND; then
+            echo "Backup part sent successfully: \$file_to_send"
+        else
+            message="Failed to send ${REMARK} backup part: \$file_to_send. Please check the server."
+            echo "\$message"
+            exit 1
+        fi
+    done
+    echo "All backup parts sent successfully"
+else
+    message="Backup file not found: \$backup_name. Please check the server."
+    echo "\$message"
+    exit 1
+fi
+
+rm -f "\$backup_name"*
+
+EOL
+
+    chmod +x "$BACKUP_PATH"
+    success "Backup script created: $BACKUP_PATH"
+
+    log "Running the backup script..."
+    if output=$(bash "$BACKUP_PATH"); then
+        success "Backup script run successfully."
+        log "Setting up cron job..."
+        if (crontab -l 2>/dev/null; echo "$TIMER $BACKUP_PATH") | crontab -; then
+            success "Cron job set up successfully. Backups will run every $minutes minutes."
+        else
+            error "Failed to set up cron job. Set it up manually: $TIMER $BACKUP_PATH"
+            exit 1
+        fi
+
+        success "🎉 Your backup system is set up and running!"
+        success "Backup script location: $BACKUP_PATH"
+        success "Cron job: Every $minutes minutes"
+        success "First backup created and sent."
+        success "Thank you for using @ErfJabs backup script. Enjoy automated backups!"
+        exit 1
+    else
+        error "Failed to run backup script. Output:"
+        error "$output"
+        message="Backup script failed to run. Please check the server."
+        eval "$PLATFORM_COMMAND"
+        exit 1
+    fi
+}
+
+# Main execution
+check_root
+menu
