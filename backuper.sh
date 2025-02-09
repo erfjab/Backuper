@@ -242,7 +242,7 @@ generate_template() {
         input "Enter your template number: " TEMPLATE
         case $TEMPLATE in
             1)
-                marzneshin_progress
+                marzneshin_template
                 break
                 ;;
             0)
@@ -312,7 +312,7 @@ toggle_directories() {
     BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
 }
 
-marzneshin_progress() {
+marzneshin_template() {
     log "Checking Marzneshin configuration..."
     local docker_compose_file="/etc/opt/marzneshin/docker-compose.yml"
 
