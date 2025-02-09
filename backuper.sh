@@ -236,6 +236,7 @@ generate_template() {
     print "[TEMPLATE]\n"
     print "Choose a backup template. You can add or remove custom DIRECTORIES after selecting.\n"
     print "1) Marzneshin"
+    print "2) Marzban"
     print "0) Custom"
     print ""
     while true; do
@@ -243,6 +244,10 @@ generate_template() {
         case $TEMPLATE in
             1)
                 marzneshin_template
+                break
+                ;;
+            2)
+                marzban_template
                 break
                 ;;
             0)
@@ -358,14 +363,77 @@ marzneshin_template() {
     done
 
     # Generate backup command for non-sqlite databases
-    local BACKUP_DB_COMMAND=""
     if [[ "$db_type" != "sqlite" ]]; then
         BACKUP_DB_COMMAND="mysqldump -h 127.0.0.1 -P $DB_PORT -u root -p'$DB_PASSWORD' --column-statistics=0 '$DB_NAME' > $DB_PATH"
+        DIRECTORIES+=($DB_PATH)
     fi
 
     # Export backup variables
     BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
     log "Complete Marzneshin"
+    confirm
+}
+
+marzban_template() {
+    log "Checking environment file..."
+    local env_file="/opt/marzban/.env"
+
+    [[ -f "$env_file" ]] || { error "Environment file not found: $env_file"; return 1; }
+
+    local db_type db_name db_user db_password db_host db_port
+    local BACKUP_DIRECTORIES=("/var/lib/marzban")  # Add default volume
+
+    # Extract SQLALCHEMY_DATABASE_URL from .env file
+    local SQLALCHEMY_DATABASE_URL=$(grep -v '^#' "$env_file" | grep 'SQLALCHEMY_DATABASE_URL' | awk -F '=' '{print $2}' | tr -d ' ' | tr -d '"' | tr -d "'")
+
+    if [[ -z "$SQLALCHEMY_DATABASE_URL" || "$SQLALCHEMY_DATABASE_URL" == *"sqlite3"* ]]; then
+        db_type="sqlite3"
+        db_name=""
+        db_user=""
+        db_password=""
+        db_host=""
+        db_port=""
+    else
+        # Parse SQLALCHEMY_DATABASE_URL to extract database details
+        if [[ "$SQLALCHEMY_DATABASE_URL" =~ ^(mysql\+pymysql|mariadb\+pymysql)://([^:]+):([^@]+)@([^:]+):([0-9]+)/(.+)$ ]]; then
+            db_type="${BASH_REMATCH[1]%%+*}"  # Extract mysql or mariadb
+            db_user="${BASH_REMATCH[2]}"
+            db_password="${BASH_REMATCH[3]}"
+            db_host="${BASH_REMATCH[4]}"
+            db_port="${BASH_REMATCH[5]}"
+            db_name="${BASH_REMATCH[6]}"
+        elif [[ "$SQLALCHEMY_DATABASE_URL" =~ ^(mysql\+pymysql|mariadb\+pymysql)://([^:]+):([^@]+)@([0-9.]+)/(.+)$ ]]; then
+            db_type="${BASH_REMATCH[1]%%+*}"  # Extract mysql or mariadb
+            db_user="${BASH_REMATCH[2]}"
+            db_password="${BASH_REMATCH[3]}"
+            db_host="${BASH_REMATCH[4]}"
+            db_port="3306"  # Default MySQL/MariaDB port
+            db_name="${BASH_REMATCH[5]}"
+        else
+            error "Invalid SQLALCHEMY_DATABASE_URL format in $env_file."
+            return 1
+        fi
+    fi
+    add_directories "/opt/marzban"
+    add_directories "/var/lib/marzban"
+    success "Database type: $db_type"
+    success "Database user: $db_user"
+    success "Database password: $db_password"
+    success "Database host: $db_host"
+    success "Database port: $db_port"
+    success "Database name: $db_name"
+
+    local DB_PATH="/root/${REMARK}${DATABASE_SUFFIX}"
+    # Generate backup command for MySQL/MariaDB
+    if [[ "$db_type" != "sqlite" ]]; then
+        BACKUP_DB_COMMAND="mysqldump -h $db_host -P $db_port -u $db_user -p'$db_password' --column-statistics=0 '$db_name' > $DB_PATH"
+        DIRECTORIES+=($DB_PATH)
+    fi
+
+    # Export backup variables
+    BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
+    log "Complete Marzban"
+    confirm
 }
 
 generate_password() {
@@ -580,7 +648,7 @@ if [[ -n "$DB_PATH" ]]; then
 fi
 
 # Backup database
-$(echo -e "$BACKUP_DB_COMMAND")
+$BACKUP_DB_COMMAND
 
 # Compress files
 if ! $COMPRESS "\$backup_name" ${BACKUP_DIRECTORIES[@]}; then
