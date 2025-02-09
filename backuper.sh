@@ -426,7 +426,7 @@ backup_name="/root/\${timestamp}_${REMARK}${BACKUP_SUFFIX}"
 db_backup_path="/root/${REMARK}_db_backup.sql"
 
 # Clean up old backup files (only specific backup files)
-rm -rf "_${REMARK}${BACKUP_SUFFIX}" 2>/dev/null || true
+rm -rf *"_${REMARK}${BACKUP_SUFFIX}" 2>/dev/null || true
 rm -rf "$DB_PATH" 2>/dev/null || true
 
 # Backup database
