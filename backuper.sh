@@ -2,8 +2,10 @@
 
 # Global constants
 readonly SCRIPT_SUFFIX="_backuper_script.sh"
-readonly BACKUP_SUFFIX="_backuper.zip"
-readonly DATABASE_SUFFIX="_backuper.sql"
+readonly TAG="_backuper."
+readonly BACKUP_SUFFIX="${TAG}zip"
+readonly DATABASE_SUFFIX="${TAG}sql"
+readonly LOGS_SUFFIX="${TAG}log"
 readonly VERSION="v0.3.0"
 readonly OWNER="@ErfJabs"
 
@@ -236,9 +238,10 @@ generate_template() {
     print "[TEMPLATE]\n"
     print "Choose a backup template. You can add or remove custom DIRECTORIES after selecting.\n"
     print "1) Marzneshin"
-    print "2) Marzban"
-    print "3) X-ui"
-    print "4) S-ui"
+    print "2) Marzneshin Logs"
+    print "3) Marzban"
+    print "4) X-ui"
+    print "5) S-ui"
     print "0) Custom"
     print ""
     while true; do
@@ -249,14 +252,18 @@ generate_template() {
                 break
                 ;;
             2)
-                marzban_template
+                marzneshin_logs_template
                 break
                 ;;
             3)
-                xui_template
+                marzban_template
                 break
                 ;;
             4)
+                xui_template
+                break
+                ;;
+            5)
                 sui_template
                 break
                 ;;
@@ -369,6 +376,41 @@ sui_template() {
     confirm
 }
 
+marzneshin_logs_template() {
+    log "Checking Marzneshin configuration..."
+    local docker_compose_file="/etc/opt/marzneshin/docker-compose.yml"
+
+    # Check if docker-compose file exists
+    if [[ ! -f "$docker_compose_file" ]]; then
+        error "Docker compose file not found: $docker_compose_file"
+        return 1
+    fi
+
+    # Define log file path
+    local DB_PATH="/root/${REMARK}${LOGS_SUFFIX}"
+
+    # Check if marzneshin command exists
+    if ! command -v marzneshin &> /dev/null; then
+        error "marzneshin command not found. Please ensure it is installed."
+        return 1
+    fi
+
+    # Run marzneshin logs command
+    if ! marzneshin logs --no-follow > "$DB_PATH"; then
+        error "Failed to export Marzneshin logs to $DB_PATH"
+        return 1
+    fi
+
+    # Add log file path to DIRECTORIES
+    DIRECTORIES=()
+    DIRECTORIES+=($DB_PATH)
+
+    # Export backup variables
+    BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
+    log "Marzneshin logs backup completed successfully."
+    confirm
+}
+
 marzneshin_template() {
     log "Checking Marzneshin configuration..."
     local docker_compose_file="/etc/opt/marzneshin/docker-compose.yml"
@@ -399,7 +441,7 @@ marzneshin_template() {
     fi
 
     # Setup backup configuration
-    local DB_PATH="/root/${REMARK}${DATABASE_SUFFIX}"
+    local DB_PATH="/root/_${REMARK}${DATABASE_SUFFIX}"
     DIRECTORIES=()
 
     # Scan default DIRECTORIES
@@ -475,7 +517,7 @@ marzban_template() {
     success "Database port: $db_port"
     success "Database name: $db_name"
 
-    local DB_PATH="/root/${REMARK}${DATABASE_SUFFIX}"
+    local DB_PATH="/root/_${REMARK}${DATABASE_SUFFIX}"
     # Generate backup command for MySQL/MariaDB
     if [[ "$db_type" != "sqlite" ]]; then
         BACKUP_DB_COMMAND="mysqldump -h $db_host -P $db_port -u $db_user -p'$db_password' --column-statistics=0 '$db_name' > $DB_PATH"
@@ -696,7 +738,7 @@ caption="${CAPTION}"
 backup_name="/root/\${timestamp}_${REMARK}${BACKUP_SUFFIX}"
 
 # Clean up old backup files (only specific backup files)
-rm -rf *"_${REMARK}${BACKUP_SUFFIX}" 2>/dev/null || true
+rm -rf *"_${REMARK}${TAG}"* 2>/dev/null || true
 
 if [[ -n "$DB_PATH" ]]; then
     rm -rf "$DB_PATH" 2>/dev/null || true
@@ -731,7 +773,8 @@ else
     exit 1
 fi
 
-rm -rf *"_${REMARK}${BACKUP_SUFFIX}" 2>/dev/null || true
+rm -rf *"_${REMARK}${TAG}"* 2>/dev/null || true
+
 
 EOL
 
