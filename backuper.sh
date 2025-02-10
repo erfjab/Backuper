@@ -139,8 +139,8 @@ menu() {
 cleanup_backups() {
     print "Removing all backups and cron jobs..."
     
-    rm -rf /root/*"$BACKUP_SUFFIX" /root/*"$SCRIPT_SUFFIX" /root/*"$DATABASE_SUFFIX"
-    
+    rm -rf /root/*"$BACKUP_SUFFIX" /root/*"$TAG"* 
+
     crontab -l | grep -v "$SCRIPT_SUFFIX" | crontab -
 
     success "All backups and cron jobs have been removed."
@@ -237,34 +237,39 @@ generate_template() {
     clear
     print "[TEMPLATE]\n"
     print "Choose a backup template. You can add or remove custom DIRECTORIES after selecting.\n"
-    print "1) Marzneshin"
-    print "2) Marzneshin Logs"
-    print "3) Marzban"
-    print "4) X-ui"
-    print "5) S-ui"
+    print "1) X-ui"
+    print "2) S-ui"
+    print "3) Marzneshin"
+    print "4) Marzneshin Logs"
+    print "5) Marzban"
+    print "6) Marzban Logs"
     print "0) Custom"
     print ""
     while true; do
         input "Enter your template number: " TEMPLATE
         case $TEMPLATE in
             1)
-                marzneshin_template
-                break
-                ;;
-            2)
-                marzneshin_logs_template
-                break
-                ;;
-            3)
-                marzban_template
-                break
-                ;;
-            4)
                 xui_template
                 break
                 ;;
-            5)
+            2)
                 sui_template
+                break
+                ;;
+            3)
+                marzneshin_template
+                break
+                ;;
+            4)
+                marzneshin_logs_template
+                break
+                ;;
+            5)
+                marzban_template
+                break
+                ;;
+            6)
+                marzban_logs_template
                 break
                 ;;
             0)
@@ -387,7 +392,7 @@ marzneshin_logs_template() {
     fi
 
     # Define log file path
-    local DB_PATH="/root/${REMARK}${LOGS_SUFFIX}"
+    local DB_PATH="/root/_${REMARK}${LOGS_SUFFIX}"
 
     # Check if marzneshin command exists
     if ! command -v marzneshin &> /dev/null; then
@@ -467,6 +472,42 @@ marzneshin_template() {
     log "Complete Marzneshin"
     confirm
 }
+
+marzban_logs_template() {
+    log "Checking Marzban configuration..."
+    local docker_compose_file="/opt/marzban/docker-compose.yml"
+
+    # Check if docker-compose file exists
+    if [[ ! -f "$docker_compose_file" ]]; then
+        error "Docker compose file not found: $docker_compose_file"
+        return 1
+    fi
+
+    # Define log file path
+    local DB_PATH="/root/_${REMARK}${LOGS_SUFFIX}"
+
+    # Check if marzban command exists
+    if ! command -v marzban &> /dev/null; then
+        error "marzban command not found. Please ensure it is installed."
+        return 1
+    fi
+
+    # Run marzban logs command
+    if ! marzban logs --no-follow > "$DB_PATH"; then
+        error "Failed to export marzban logs to $DB_PATH"
+        return 1
+    fi
+
+    # Add log file path to DIRECTORIES
+    DIRECTORIES=()
+    DIRECTORIES+=($DB_PATH)
+
+    # Export backup variables
+    BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
+    log "marzban logs backup completed successfully."
+    confirm
+}
+
 
 marzban_template() {
     log "Checking environment file..."
@@ -723,7 +764,7 @@ EOF
 
 generate_script() {
     clear
-    local BACKUP_PATH="/root/${REMARK}${SCRIPT_SUFFIX}"
+    local BACKUP_PATH="/root/_${REMARK}${SCRIPT_SUFFIX}"
     log "Generating backup script: $BACKUP_PATH"
 
     cat <<EOL > "$BACKUP_PATH"
