@@ -243,6 +243,7 @@ generate_template() {
     print "4) Marzneshin Logs"
     print "5) Marzban"
     print "6) Marzban Logs"
+    print "7) MirzaBot"
     print "0) Custom"
     print ""
     while true; do
@@ -270,6 +271,10 @@ generate_template() {
                 ;;
             6)
                 marzban_logs_template
+                break
+                ;;
+            7)
+                mirzabot_template
                 break
                 ;;
             0)
@@ -463,7 +468,7 @@ marzneshin_template() {
 
     # Generate backup command for non-sqlite databases
     if [[ "$db_type" != "sqlite" ]]; then
-        BACKUP_DB_COMMAND="mysqldump -h 127.0.0.1 -P $DB_PORT -u root -p'$DB_PASSWORD' --column-statistics=0 '$DB_NAME' > $DB_PATH"
+        BACKUP_DB_COMMAND="mysqldump -h 127.0.0.1 -P $DB_PORT -u root -p'$DB_PASSWORD' '$DB_NAME' > $DB_PATH"
         DIRECTORIES+=($DB_PATH)
     fi
 
@@ -507,7 +512,6 @@ marzban_logs_template() {
     log "marzban logs backup completed successfully."
     confirm
 }
-
 
 marzban_template() {
     log "Checking environment file..."
@@ -561,13 +565,42 @@ marzban_template() {
     local DB_PATH="/root/_${REMARK}${DATABASE_SUFFIX}"
     # Generate backup command for MySQL/MariaDB
     if [[ "$db_type" != "sqlite" ]]; then
-        BACKUP_DB_COMMAND="mysqldump -h $db_host -P $db_port -u $db_user -p'$db_password' --column-statistics=0 '$db_name' > $DB_PATH"
+        BACKUP_DB_COMMAND="mysqldump -h $db_host -P $db_port -u $db_user -p'$db_password' '$db_name' > $DB_PATH"
         DIRECTORIES+=($DB_PATH)
     fi
 
     # Export backup variables
     BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
     log "Complete Marzban"
+    confirm
+}
+
+
+mirzabot_template() {
+    log "Checking MirzaBot file..."
+    local mirzabot_file='/var/www/html/mirzabotconfig/config.php'
+    
+    [[ -f "$mirzabot_file" ]] || { error "MirzaBot file not found: $mirzabot_file"; return 1; }
+
+    # Extract database values from config.php
+    db_name=$(grep -m 1 "\$dbname" $mirzabot_file | sed -E "s/.*dbname\s*=\s*'([^']+)'.*/\1/")
+    db_user=$(grep -m 1 "\$usernamedb" $mirzabot_file | sed -E "s/.*usernamedb\s*=\s*'([^']+)'.*/\1/")
+    db_password=$(grep -m 1 "\$passworddb" $mirzabot_file | sed -E "s/.*passworddb\s*=\s*'([^']+)'.*/\1/")
+
+    # Check if the values are extracted correctly
+    if [ -z "$db_name" ] || [ -z "$db_password" ] || [ -z "$db_user" ]; then
+        error "Failed to extract database values from $mirzabot_file."
+        exit 1
+    fi
+
+    # Generate backup command for MySQL/MariaDB
+    local DB_PATH="/root/_${REMARK}${DATABASE_SUFFIX}"
+    BACKUP_DB_COMMAND="mysqldump -u $db_user -p'$db_password' '$db_name' > $DB_PATH"
+    DIRECTORIES+=($DB_PATH)
+
+    # Export backup variables
+    BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
+    log "Complete MirzaBot"
     confirm
 }
 
