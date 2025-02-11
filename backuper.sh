@@ -851,6 +851,11 @@ generate_script() {
     local BACKUP_PATH="/root/_${REMARK}${SCRIPT_SUFFIX}"
     log "Generating backup script: $BACKUP_PATH"
 
+    DB_CLEANUP=""
+    if [[ -n "$DB_PATH" ]]; then
+        DB_CLEANUP="rm -rf "$DB_PATH" 2>/dev/null || true"
+    fi
+
     cat <<EOL > "$BACKUP_PATH"
 #!/bin/bash
 
@@ -864,10 +869,8 @@ backup_name="/root/\${timestamp}_${REMARK}${BACKUP_SUFFIX}"
 
 # Clean up old backup files (only specific backup files)
 rm -rf *"_${REMARK}${TAG}"* 2>/dev/null || true
+$DB_CLEANUP
 
-if [[ -n "$DB_PATH" ]]; then
-    rm -rf "$DB_PATH" 2>/dev/null || true
-fi
 
 # Backup database
 $BACKUP_DB_COMMAND
