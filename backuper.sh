@@ -245,6 +245,7 @@ generate_template() {
     print "6) Marzban Logs"
     print "7) MirzaBot"
     print "8) WalBot"
+    print "9) HolderBot"
     print "0) Custom"
     print ""
     while true; do
@@ -280,6 +281,10 @@ generate_template() {
                 ;;
             8)
                 walbot_template
+                break
+                ;;
+            9)
+                holderbot_template
                 break
                 ;;
             0)
@@ -347,6 +352,27 @@ toggle_directories() {
         fi
     done
     BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
+}
+
+holderbot_template() {
+    log "Checking HolderBot configuration..."
+    
+    # Set default value for HOLDER_FOLDER if not set
+    local HOLDER_FOLDER="/opt/erfjab/holderbot/"
+
+    # Check if the directory exists
+    if [ ! -d "$HOLDER_FOLDER" ]; then
+        error "Directory not found: $HOLDER_FOLDER"
+        return 1
+    fi
+
+    # Add the directory to BACKUP_DIRECTORIES
+    add_directories "$HOLDER_FOLDER"
+
+    # Export backup variables
+    BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
+    log "Complete HolderBot"
+    confirm
 }
 
 walbot_template() {
