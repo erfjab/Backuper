@@ -244,6 +244,7 @@ generate_template() {
     print "5) Marzban"
     print "6) Marzban Logs"
     print "7) MirzaBot"
+    print "8) WalBot"
     print "0) Custom"
     print ""
     while true; do
@@ -275,6 +276,10 @@ generate_template() {
                 ;;
             7)
                 mirzabot_template
+                break
+                ;;
+            8)
+                walbot_template
                 break
                 ;;
             0)
@@ -342,6 +347,27 @@ toggle_directories() {
         fi
     done
     BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
+}
+
+walbot_template() {
+    log "Checking WalBot configuration..."
+    
+    # Set default value for WALDB_FOLDER if not set
+    local WALDB_FOLDER="/opt/walbot/"
+
+    # Check if the directory exists
+    if [ ! -d "$WALDB_FOLDER" ]; then
+        error "Directory not found: $WALDB_FOLDER"
+        return 1
+    fi
+
+    # Add the directory to BACKUP_DIRECTORIES
+    add_directories "$WALDB_FOLDER"
+
+    # Export backup variables
+    BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
+    log "Complete WalBot"
+    confirm
 }
 
 xui_template() {
@@ -574,7 +600,6 @@ marzban_template() {
     log "Complete Marzban"
     confirm
 }
-
 
 mirzabot_template() {
     log "Checking MirzaBot file..."
