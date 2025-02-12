@@ -8,6 +8,8 @@ readonly DATABASE_SUFFIX="${TAG}sql"
 readonly LOGS_SUFFIX="${TAG}log"
 readonly VERSION="v0.3.0"
 readonly OWNER="@ErfJabs"
+readonly SPONSORTEXT="خرید سرور ایران ارزان و نامحدود"
+
 
 # ANSI color codes
 declare -A COLORS=(
@@ -149,7 +151,6 @@ cleanup_backups() {
 
 start_backup() {
     generate_remark
-    generate_caption
     generate_timer
     generate_template
     toggle_directories
@@ -762,6 +763,7 @@ telegram_progress() {
 
     # Set the platform command for sending files
     PLATFORM_COMMAND="curl -s -F \"chat_id=$CHAT_ID\" -F \"document=@\$FILE\" -F \"caption=\$CAPTION\" -F \"parse_mode=HTML\" \"https://api.telegram.org/bot$BOT_TOKEN/sendDocument\""
+    CAPTION="📦 <b>From </b><code>\${ip}</code> \n⚡️ <b>Develop by <a href='https://t.me/erfjabs'>@ErfJabs</a></b>\n<b>➖➖➖➖Sponsor➖➖➖➖</b>\n${SPONSORTEXT}"
     success "Telegram configuration completed successfully."
     sleep 1
 }
@@ -833,8 +835,8 @@ set envelope_from=yes
 EOF
 
             chmod 600 ~/.muttrc
-
-            PLATFORM_COMMAND="echo 'Backup file is attached.' | mutt -s 'Backup File $(date '+%Y-%m-%d')' -a \"\$FILE\" -- \"$GMAIL_ADDRESS\""
+            CAPTION="<html><body><p><b>📦 From </b><code>\${ip}</code></p><p><b>⚡️ Develop by <a href='https://t.me/erfjabs'>@ErfJabs</a></b></p><p><b>➖➖➖➖Sponsor➖➖➖➖</b></p><p>${SPONSORTEXT}</p></body></html>"
+            PLATFORM_COMMAND="echo \$CAPTION | mutt -e 'set content_type=text/html' -s 'Backuper' -a \"\$FILE\" -- \"$GMAIL_ADDRESS\""
             break
         else
             wrong "Authentication failed! Check your email or app password and try again."
@@ -864,7 +866,7 @@ set -e
 # Variables
 ip=\$(hostname -I | awk '{print \$1}')
 timestamp=\$(TZ='Asia/Tehran' date +%m%d-%H%M)
-caption="${CAPTION}"
+CAPTION="${CAPTION}"
 backup_name="/root/\${timestamp}_${REMARK}${BACKUP_SUFFIX}"
 
 # Clean up old backup files (only specific backup files)
