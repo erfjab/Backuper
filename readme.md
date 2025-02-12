@@ -45,12 +45,6 @@ To install the latest version, run:
 sudo bash -c "$(curl -sL https://github.com/erfjab/Backuper/raw/master/backuper.sh)"
 ```  
 
-For an older version:  
-
-```bash
-sudo bash -c "$(curl -sL https://github.com/erfjab/Backuper/raw/master/install.sh)"
-```  
-
 ## 💙 Support the Project  
 
 If you find this project useful, giving a **star (⭐)** is more than enough. Thank you!  

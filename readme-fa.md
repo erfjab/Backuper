@@ -45,12 +45,6 @@
 sudo bash -c "$(curl -sL https://github.com/erfjab/Backuper/raw/master/backuper.sh)"  
 ```  
 
-برای نسخه‌های قدیمی‌تر:  
-
-```bash  
-sudo bash -c "$(curl -sL https://github.com/erfjab/Backuper/raw/master/install.sh)"  
-```  
-
 ## 💙 حمایت از پروژه  
 
 اگر این پروژه برای شما مفید بوده، با دادن یک **ستاره (⭐)** از آن حمایت کنید. سپاسگزاریم!  
