@@ -695,7 +695,8 @@ generate_platform() {
     print "[PLATFORM]\n"
     print "Select one platform to send your backup.\n"
     print "1) Telegram"
-    print "2) Gmail"
+    print "2) Discord"
+    print "3) Gmail"
     print ""
 
     while true; do
@@ -708,6 +709,11 @@ generate_platform() {
                 break
                 ;;
             2)
+                PLATFORM="discord"
+                discord_progress
+                break
+                ;;
+            3)
                 PLATFORM="gmail"
                 gmail_progress
                 break
@@ -767,6 +773,43 @@ telegram_progress() {
     success "Telegram configuration completed successfully."
     sleep 1
 }
+
+discord_progress() {
+    clear
+    print "[DISCORD]\n"
+    print "To use Discord, you need to provide a Webhook URL.\n"
+
+    while true; do
+        # Get Discord Webhook URL
+        while true; do
+            input "Enter the Discord Webhook URL: " DISCORD_WEBHOOK
+            if [[ -z "$DISCORD_WEBHOOK" ]]; then
+                wrong "Webhook URL cannot be empty!"
+            elif [[ ! "$DISCORD_WEBHOOK" =~ ^https://discord\.com/api/webhooks/ ]]; then
+                wrong "Invalid Discord Webhook URL format!"
+            else
+                break
+            fi
+        done
+        # Validate Webhook
+        log "Checking Discord Webhook..."
+        response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$DISCORD_WEBHOOK" -H "Content-Type: application/json" -d '{"content": "Hi, Backuper Test Message!"}')
+        
+        if [[ "$response" -ne 204 ]]; then
+            wrong "Invalid Webhook URL or Discord API error!"
+        else
+            success "Webhook URL is valid."
+        fi
+    done
+
+    # Set the platform command for sending files
+    PLATFORM_COMMAND="curl -s -F \"file=@\$FILE\" -F \"payload_json={\\\"content\\\": \\\"\$CAPTION\\\"}\" \"$DISCORD_WEBHOOK\""
+    CAPTION="📦 **From** \`${ip}\`\n⚡️ **Developed by** [@ErfJabs](https://t.me/erfjabs)\n➖➖➖➖ **Sponsor** ➖➖➖➖\n${SPONSORTEXT}"
+    
+    success "Discord configuration completed successfully."
+    sleep 1
+}
+
 
 gmail_progress() {
     clear
