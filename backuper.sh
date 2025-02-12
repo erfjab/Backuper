@@ -656,6 +656,46 @@ mirzabot_template() {
     confirm
 }
 
+hiddify_template() {
+    log "Checking Hiddify configuration..."
+    
+    # Set default value for HIDDIFY_DB_FOLDER if not set
+    local HIDDIFY_DB_FOLDER="/opt/hiddify-manager/hiddify-panel/backup.sh"
+    local BACKUP_FOLDER="/opt/hiddify-manager/hiddify-panel/backup"
+
+    # Check if the backup script exists
+    if [ ! -f "$HIDDIFY_DB_FOLDER" ]; then
+        error "Backup script not found: $HIDDIFY_DB_FOLDER"
+        return 1
+    fi
+
+    # Create backup directory if it doesn't exist
+    if [ ! -d "$BACKUP_FOLDER" ]; then
+        log "Creating backup directory: $BACKUP_FOLDER"
+        mkdir -p "$BACKUP_FOLDER"
+        if [ $? -ne 0 ]; then
+            error "Failed to create backup directory: $BACKUP_FOLDER"
+            return 1
+        fi
+    fi
+
+    # Set full access permissions to the backup directory and script
+    log "Setting permissions for backup directory and script..."
+    chmod -R 755 "$BACKUP_FOLDER"
+    chmod 755 "$HIDDIFY_DB_FOLDER"
+
+    # Add the directory to BACKUP_DIRECTORIES
+    add_directories "$BACKUP_FOLDER"
+
+    # Set the backup command
+    BACKUP_DB_COMMAND="bash $HIDDIFY_DB_FOLDER"
+
+    # Export backup variables
+    BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
+    log "Hiddify configuration completed successfully."
+    confirm
+}
+
 generate_password() {
     clear
     print "[PASSWORD PROTECTION]\n"

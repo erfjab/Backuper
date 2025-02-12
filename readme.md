@@ -28,6 +28,7 @@
 
 - [x] **X-ui**  
 - [x] **S-ui**  
+- [x] **Hiddify**
 - [x] **Marzneshin**  
 - [x] **Marzneshin Logs**  
 - [x] **Marzban**  
