@@ -714,6 +714,7 @@ generate_password() {
         # If password is empty, skip password protection
         if [ -z "$PASSWORD" ]; then
             success "No password will be set for the archive."
+            COMPRESS="zip -9 -r -s ${LIMITSIZE}m"
             break
         fi
 
@@ -727,7 +728,7 @@ generate_password() {
         
         if [ "$PASSWORD" == "$CONFIRM_PASSWORD" ]; then
             success "Password confirmed."
-            COMPRESS="$COMPRESS -e -P $PASSWORD"
+            COMPRESS="$COMPRESS -e -P $PASSWORD -s ${LIMITSIZE}m"
             break
         else
             wrong "Passwords do not match. Please try again."
@@ -814,8 +815,13 @@ telegram_progress() {
 
     # Set the platform command for sending files
     PLATFORM_COMMAND="curl -s -F \"chat_id=$CHAT_ID\" -F \"document=@\$FILE\" -F \"caption=\$CAPTION\" -F \"parse_mode=HTML\" \"https://api.telegram.org/bot$BOT_TOKEN/sendDocument\""
-    CAPTION="📦 <b>From </b><code>\${ip}</code> \n⚡️ <b>Develop by <a href='https://t.me/erfjabs'>@ErfJabs</a></b>\n<b>➖➖➖➖Sponsor➖➖➖➖</b>\n${SPONSORTEXT}"
+    CAPTION="
+📦 <b>From </b><code>\${ip}</code>
+⚡️ <b>Develop by <a href='https://t.me/erfjabs'>@ErfJabs</a></b>
+<b>➖➖➖➖Sponsor➖➖➖➖</b>
+${SPONSORTEXT}"
     success "Telegram configuration completed successfully."
+    LIMITSIZE=49
     sleep 1
 }
 
@@ -850,7 +856,7 @@ discord_progress() {
     # Set the platform command for sending files
     PLATFORM_COMMAND="curl -s -F \"file=@\$FILE\" -F \"payload_json={\\\"content\\\": \\\"\$CAPTION\\\"}\" \"$DISCORD_WEBHOOK\""
     CAPTION="📦 **From** \`${ip}\`\n⚡️ **Developed by** [@ErfJabs](https://t.me/erfjabs)\n➖➖➖➖ **Sponsor** ➖➖➖➖\n${SPONSORTEXT}"
-    
+    LIMITSIZE=24
     success "Discord configuration completed successfully."
     sleep 1
 }
@@ -925,6 +931,7 @@ EOF
             chmod 600 ~/.muttrc
             CAPTION="<html><body><p><b>📦 From </b><code>\${ip}</code></p><p><b>⚡️ Develop by <a href='https://t.me/erfjabs'>@ErfJabs</a></b></p><p><b>➖➖➖➖Sponsor➖➖➖➖</b></p><p>${SPONSORTEXT}</p></body></html>"
             PLATFORM_COMMAND="echo \$CAPTION | mutt -e 'set content_type=text/html' -s 'Backuper' -a \"\$FILE\" -- \"$GMAIL_ADDRESS\""
+            LIMITSIZE=24
             break
         else
             wrong "Authentication failed! Check your email or app password and try again."
@@ -956,6 +963,7 @@ ip=\$(hostname -I | awk '{print \$1}')
 timestamp=\$(TZ='Asia/Tehran' date +%m%d-%H%M)
 CAPTION="${CAPTION}"
 backup_name="/root/\${timestamp}_${REMARK}${BACKUP_SUFFIX}"
+base_name="/root/\${timestamp}_${REMARK}${TAG}"
 
 # Clean up old backup files (only specific backup files)
 rm -rf *"_${REMARK}${TAG}"* 2>/dev/null || true
@@ -973,8 +981,8 @@ if ! $COMPRESS "\$backup_name" ${BACKUP_DIRECTORIES[@]}; then
 fi
 
 # Send backup files
-if ls \${backup_name}* > /dev/null 2>&1; then
-    for FILE in \${backup_name}*; do
+if ls \${base_name}* > /dev/null 2>&1; then
+    for FILE in \${base_name}*; do
         echo "Sending file: \$FILE"
         if $PLATFORM_COMMAND; then
             echo "Backup part sent successfully: \$FILE"
