@@ -240,13 +240,14 @@ generate_template() {
     print "Choose a backup template. You can add or remove custom DIRECTORIES after selecting.\n"
     print "1) X-ui"
     print "2) S-ui"
-    print "3) Marzneshin"
-    print "4) Marzneshin Logs"
-    print "5) Marzban"
-    print "6) Marzban Logs"
-    print "7) MirzaBot"
-    print "8) WalBot"
-    print "9) HolderBot"
+    print "3) Hiddify"
+    print "4) Marzneshin"
+    print "5) Marzneshin Logs"
+    print "6) Marzban"
+    print "7) Marzban Logs"
+    print "8) MirzaBot"
+    print "9) WalBot"
+    print "10) HolderBot"
     print "0) Custom"
     print ""
     while true; do
@@ -261,30 +262,34 @@ generate_template() {
                 break
                 ;;
             3)
-                marzneshin_template
+                hiddify_template
                 break
                 ;;
             4)
-                marzneshin_logs_template
+                marzneshin_template
                 break
                 ;;
             5)
-                marzban_template
+                marzneshin_logs_template
                 break
                 ;;
             6)
-                marzban_logs_template
+                marzban_template
                 break
                 ;;
             7)
-                mirzabot_template
+                marzban_logs_template
                 break
                 ;;
             8)
-                walbot_template
+                mirzabot_template
                 break
                 ;;
             9)
+                walbot_template
+                break
+                ;;
+            10)
                 holderbot_template
                 break
                 ;;
