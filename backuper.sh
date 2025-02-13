@@ -943,19 +943,19 @@ EOF
     sleep 1
 }
 
+
 generate_script() {
     clear
     local BACKUP_PATH="/root/_${REMARK}${SCRIPT_SUFFIX}"
     log "Generating backup script: $BACKUP_PATH"
-
     DB_CLEANUP=""
     if [[ -n "$DB_PATH" ]]; then
         DB_CLEANUP="rm -rf "$DB_PATH" 2>/dev/null || true"
     fi
-
+    
+    # Create the backup script
     cat <<EOL > "$BACKUP_PATH"
 #!/bin/bash
-
 set -e 
 
 # Variables
@@ -968,7 +968,6 @@ base_name="/root/\${timestamp}_${REMARK}${TAG}"
 # Clean up old backup files (only specific backup files)
 rm -rf *"_${REMARK}${TAG}"* 2>/dev/null || true
 $DB_CLEANUP
-
 
 # Backup database
 $BACKUP_DB_COMMAND
@@ -1000,19 +999,17 @@ else
 fi
 
 rm -rf *"_${REMARK}${TAG}"* 2>/dev/null || true
-
-
 EOL
 
     # Make the script executable
     chmod +x "$BACKUP_PATH"
     success "Backup script created: $BACKUP_PATH"
-
-    # Run the backup script
+    
+    # Run the backup script with realtime output
     log "Running the backup script..."
-    if output=$(bash "$BACKUP_PATH" 2>&1); then
+    if bash "$BACKUP_PATH" 2>&1 | tee /tmp/backup.log; then
         success "Backup script run successfully."
-
+        
         # Set up cron job
         log "Setting up cron job..."
         if (crontab -l 2>/dev/null; echo "$TIMER $BACKUP_PATH") | crontab -; then
@@ -1021,7 +1018,7 @@ EOL
             error "Failed to set up cron job. Set it up manually: $TIMER $BACKUP_PATH"
             exit 1
         fi
-
+        
         # Final success message
         success "🎉 Your backup system is set up and running!"
         success "Backup script location: $BACKUP_PATH"
@@ -1030,14 +1027,14 @@ EOL
         success "Thank you for using @ErfJabs backup script. Enjoy automated backups!"
         exit 0
     else
-        error "Failed to run backup script. Output:"
-        error "$output"
+        error "Failed to run backup script. Full output:"
+        cat /tmp/backup.log
         message="Backup script failed to run. Please check the server."
         eval "$PLATFORM_COMMAND"
+        rm -f /tmp/backup.log
         exit 1
     fi
 }
-
 
 main() {
     clear
