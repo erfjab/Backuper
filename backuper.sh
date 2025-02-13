@@ -850,6 +850,7 @@ discord_progress() {
             wrong "Invalid Webhook URL or Discord API error!"
         else
             success "Webhook URL is valid."
+            break
         fi
     done
 
