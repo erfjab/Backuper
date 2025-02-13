@@ -78,11 +78,16 @@ install_dependencies() {
     case $package_manager in
         apt)
             apt-get install -y "${packages[@]}" || error "Failed to install dependencies"
+            if ! apt-get install -y default-mysql-client; then
+                apt-get install -y mariadb-client || error "Failed to install MySQL/MariaDB client"
+            fi
             ;;
         dnf|yum)
+            packages+=("mariadb")
             $package_manager install -y "${packages[@]}" || error "Failed to install dependencies"
             ;;
         pacman)
+            packages+=("mariadb")
             pacman -Sy --noconfirm "${packages[@]}" || error "Failed to install dependencies"
             ;;
     esac
