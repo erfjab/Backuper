@@ -806,7 +806,7 @@ telegram_progress() {
         log "Checking Telegram bot..."
         response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" -d chat_id="$CHAT_ID" -d text="Hi, Backuper Test Message!")
         if [[ "$response" -ne 200 ]]; then
-            wrong "Invalid bot token or chat ID, or Telegram API error!"
+            wrong "Invalid bot token or chat ID, or Telegram API error! [tip: start bot]"
         else
             success "Bot token and chat ID are valid."
             break
