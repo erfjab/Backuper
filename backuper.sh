@@ -147,8 +147,8 @@ menu() {
 cleanup_backups() {
     print "Removing all backups and cron jobs..."
     
-    rm -rf /root/*"$SCRIPT_SUFFIX" /root/*"$TAG"* 
-
+    rm -rf /root/*"$SCRIPT_SUFFIX" /root/*"$TAG"* /root/*_backuper.sh /root/ac-backup*.sh /root/*backuper*.sh
+    
     crontab -l | grep -v "$SCRIPT_SUFFIX" | crontab -
 
     success "All backups and cron jobs have been removed."
