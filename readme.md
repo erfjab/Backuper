@@ -1,52 +1,54 @@
 <div align="center">
-  <img src="https://github.com/user-attachments/assets/16cc16e2-f1e5-4ae8-9b5f-bbea33fa39bd" alt="photo_2024-08-10_20-43-59" />
+  <img src="https://github.com/user-attachments/assets/16cc16e2-f1e5-4ae8-9b5f-bbea33fa39bd" alt="Backuper Logo" />
 </div>
 
+# What is Backuper? [Persion](readme-fa.md)
+**Backuper** is an automated backup script with full customization options and support for multiple platforms.  
 
+## Supported Platforms  
 
-# What is Backuper?
+- [x] **Gmail**  
+- [x] **Telegram**  
+- [x] **Discord**  
 
-Backuper is an automated backup script with full customization options and support for sending backups to Discord and Telegram.
+## Key Features  
 
-### ⚡️ New Features:
+- **Customizable remarks**  
+- **Automated scheduling**  
+- **Multi-template support**  
+- **Add/remove custom directories**  
+- **Send backups with no size limits**  
+- **Set a password for backup files**  
+- **User-friendly interface**  
+- **Clear old backups**  
+- **Include date and time in file names**  
+- **Optimized for performance**  
 
-- **Add or remove directories and files in your backup**
-- **Send backups with no size limits**
-- **Choose your file compression method**
-- **Cut backup size in half with 7z**
-- **Send backups to Discord**
-- **Pick a name for your backup file**
-- **Optimize your backup process**
-- **Super cool user interface**
-- **Include date and time in the backup file name**
-- **Password protect your backups**
-- **No annoying ads**
-- **Get a list of active backups**
-- **Ability to stop backups**
+## Supported Templates  
 
-### 📦 Templates
+- [x] **X-ui**  
+- [x] **S-ui**  
+- [x] **Hiddify**
+- [x] **Marzneshin**  
+- [x] **Marzneshin Logs**  
+- [x] **Marzban**  
+- [x] **Marzban Logs**  
+- [x] **MirzaBot**  
+- [x] **WalBot**  
+- [x] **HolderBot**  
 
-  - **Marzban**
-  - **Marzban logs**
-  - **Marzneshin**
-  - **All X-ui's**
-  - **Hiddify Manager**
-  - **Custom**
+## Installation  
 
-
-
-## Installation
-To install, use the following command:
+To install the latest version, run:  
 
 ```bash
-sudo bash -c "$(curl -sL https://github.com/erfjab/Backuper/raw/master/install.sh)"
-```
+sudo bash -c "$(curl -sL https://github.com/erfjab/Backuper/raw/master/backuper.sh)"
+```  
 
+## 💙 Support the Project  
 
-## Support the Project 
+If you find this project useful, giving a **star (⭐)** is more than enough. Thank you!  
 
-**We don't need financial support, only a Star (⭐) is enough, thank you.**
+🔹 Join [@ErfJabs](https://t.me/erfjabs) for the latest news and updates.  
 
-**Join [@ErfJabs](https://t.me/erfjabs) for the latest news and updates.** 
-
-[![Stargazers over time](https://starchart.cc/erfjab/Backuper.svg?variant=adaptive)](https://starchart.cc/erfjab/Backuper)
+[![Stargazers over time](https://starchart.cc/erfjab/Backuper.svg?variant=adaptive)](https://starchart.cc/erfjab/Backuper)  
