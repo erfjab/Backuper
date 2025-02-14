@@ -8,7 +8,8 @@ readonly DATABASE_SUFFIX="${TAG}sql"
 readonly LOGS_SUFFIX="${TAG}log"
 readonly VERSION="v0.3.0"
 readonly OWNER="@ErfJabs"
-readonly SPONSORTEXT="خرید سرور ایران ارزان و نامحدود"
+readonly SPONSORTEXT="سرور رسپینا ترایی 450 پورت 10 دارای اسکریپت تانلینگ رایگان"
+readonly SPONSORLINK="https://t.me/OkaCloud"
 
 
 # ANSI color codes
@@ -531,7 +532,7 @@ marzneshin_template() {
 
     # Generate backup command for non-sqlite databases
     if [[ "$db_type" != "sqlite" ]]; then
-        BACKUP_DB_COMMAND="mysqldump -h 127.0.0.1 -P $DB_PORT -u root -p'$DB_PASSWORD' '$DB_NAME' > $DB_PATH"
+        BACKUP_DB_COMMAND="mysqldump -h 127.0.0.1 --column-statistics=0 -P $DB_PORT -u root -p'$DB_PASSWORD' '$DB_NAME' > $DB_PATH"
         DIRECTORIES+=($DB_PATH)
     fi
 
@@ -821,10 +822,9 @@ telegram_progress() {
     # Set the platform command for sending files
     PLATFORM_COMMAND="curl -s -F \"chat_id=$CHAT_ID\" -F \"document=@\$FILE\" -F \"caption=\$CAPTION\" -F \"parse_mode=HTML\" \"https://api.telegram.org/bot$BOT_TOKEN/sendDocument\""
     CAPTION="
-📦 <b>From </b><code>\${ip}</code>
-⚡️ <b>Develop by <a href='https://t.me/erfjabs'>@ErfJabs</a></b>
+📦 <b>From </b><code>\${ip}</code> [By <b><a href='https://t.me/erfjabs'>@ErfJabs</a></b>]
 <b>➖➖➖➖Sponsor➖➖➖➖</b>
-${SPONSORTEXT}"
+<a href='${SPONSORLINK}'>${SPONSORTEXT}</a>"
     success "Telegram configuration completed successfully."
     LIMITSIZE=49
     sleep 1
@@ -861,7 +861,7 @@ discord_progress() {
 
     # Set the platform command for sending files
     PLATFORM_COMMAND="curl -s -F \"file=@\$FILE\" -F \"payload_json={\\\"content\\\": \\\"\$CAPTION\\\"}\" \"$DISCORD_WEBHOOK\""
-    CAPTION="📦 **From** \`${ip}\`\n⚡️ **Developed by** [@ErfJabs](https://t.me/erfjabs)\n➖➖➖➖ **Sponsor** ➖➖➖➖\n${SPONSORTEXT}"
+    CAPTION="📦 **From** \`${ip}\` [by **[@ErfJabs](https://t.me/erfjabs)**]\n➖➖➖➖**Sponsor**➖➖➖➖\n[${SPONSORTEXT}](${SPONSORLINK})"
     LIMITSIZE=24
     success "Discord configuration completed successfully."
     sleep 1
@@ -935,7 +935,7 @@ set envelope_from=yes
 EOF
 
             chmod 600 ~/.muttrc
-            CAPTION="<html><body><p><b>📦 From </b><code>\${ip}</code></p><p><b>⚡️ Develop by <a href='https://t.me/erfjabs'>@ErfJabs</a></b></p><p><b>➖➖➖➖Sponsor➖➖➖➖</b></p><p>${SPONSORTEXT}</p></body></html>"
+            CAPTION="<html><body><p><b>📦 From </b><code>\${ip}</code> [by <b><a href='https://t.me/erfjabs'>@ErfJabs</a></b>]</p><p><b>➖➖➖➖Sponsor➖➖➖➖</b></p><p><a href='${SPONSORLINK}'>${SPONSORTEXT}</a></p></body></html>"
             PLATFORM_COMMAND="echo \$CAPTION | mutt -e 'set content_type=text/html' -s 'Backuper' -a \"\$FILE\" -- \"$GMAIL_ADDRESS\""
             LIMITSIZE=24
             break
