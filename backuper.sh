@@ -531,7 +531,7 @@ marzneshin_template() {
     done
 
     # Generate backup command for non-sqlite databases
-    if [[ "$db_type" != "sqlite" ]]; then
+    if [[ "$DB_TYPE" != "sqlite" ]]; then
         BACKUP_DB_COMMAND="mysqldump -h 127.0.0.1 --column-statistics=0 -P $DB_PORT -u root -p'$DB_PASSWORD' '$DB_NAME' > $DB_PATH"
         DIRECTORIES+=($DB_PATH)
     fi
