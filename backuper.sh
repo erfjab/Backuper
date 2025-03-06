@@ -8,7 +8,7 @@ readonly DATABASE_SUFFIX="${TAG}sql"
 readonly LOGS_SUFFIX="${TAG}log"
 readonly VERSION="v0.3.2"
 readonly OWNER="@ErfJabs"
-readonly SPONSORTEXT="سرور رسپینا ترایی 450 پورت 10 دارای اسکریپت تانلینگ رایگان"
+readonly SPONSORTEXT="خرید سرور مجازی ایران OkaCloud با تانلینگ اختصاصی رایگان"
 readonly SPONSORLINK="https://t.me/OkaCloud"
 
 
@@ -628,7 +628,7 @@ marzban_template() {
 
     local DB_PATH="/root/_${REMARK}${DATABASE_SUFFIX}"
     # Generate backup command for MySQL/MariaDB
-    if [[ "$db_type" != "sqlite" ]]; then
+    if [[ "$db_type" != "sqlite3" ]]; then
         BACKUP_DB_COMMAND="mysqldump -h $db_host -P $db_port -u $db_user -p'$db_password' '$db_name' > $DB_PATH"
         DIRECTORIES+=($DB_PATH)
     fi
