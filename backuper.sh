@@ -628,7 +628,7 @@ marzban_template() {
 
     local DB_PATH="/root/_${REMARK}${DATABASE_SUFFIX}"
     # Generate backup command for MySQL/MariaDB
-    if [[ "$db_type" != "sqlite" ]]; then
+    if [[ "$db_type" != "sqlite3" ]]; then
         BACKUP_DB_COMMAND="mysqldump -h $db_host -P $db_port -u $db_user -p'$db_password' '$db_name' > $DB_PATH"
         DIRECTORIES+=($DB_PATH)
     fi
