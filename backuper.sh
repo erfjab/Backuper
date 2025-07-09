@@ -112,7 +112,6 @@ install_yq() {
 
     success "yq installed successfully."
 }
-
 menu() {
     update_os
     install_dependencies
@@ -123,7 +122,8 @@ menu() {
         print ""
         print "1️) Install Backuper"
         print "2) Remove All Backupers"
-        print "3) Exit"
+        print "3) Run All Backup Scripts"
+        print "4) Exit"
         print ""
         input "Choose an option:" choice
         case $choice in
@@ -134,6 +134,17 @@ menu() {
                 cleanup_backups
                 ;;
             3)
+                if compgen -G "/root/*${SCRIPT_SUFFIX}" > /dev/null; then
+                    for script in /root/*${SCRIPT_SUFFIX}; do
+                        log "Running backup script: $script"
+                        bash "$script"
+                    done
+                else
+                    warn "No backup scripts found in /root directory"
+                fi
+                confirm
+                ;;
+            4)
                 print "Thank you for using @ErfJabs script. Goodbye!"
                 exit 0
                 ;;
@@ -702,7 +713,7 @@ marzhelp_template() {
     DIRECTORIES+=("$MARZHELP_DB_PATH")
 
     add_directories "/opt/marzban"
-    add_directories "/root/marzhelp.txt"
+    DIRECTORIES+=("/root/marzhelp.txt")
     add_directories "/var/lib/marzban"
     success "Database type: $db_type"
     success "Database user: $db_user"
