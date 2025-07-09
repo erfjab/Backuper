@@ -35,7 +35,8 @@
 - [x] **Marzban Logs**  
 - [x] **MirzaBot**  
 - [x] **WalBot**  
-- [x] **HolderBot**  
+- [x] **HolderBot**
+- [x] **MarzHelp + Marzban** 
 
 ## Installation  
 
