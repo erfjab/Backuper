@@ -254,6 +254,7 @@ generate_template() {
     print "8) MirzaBot"
     print "9) WalBot"
     print "10) HolderBot"
+    print "11) MarzHelp + Marzban"
     print "0) Custom"
     print ""
     while true; do
@@ -297,6 +298,10 @@ generate_template() {
                 ;;
             10)
                 holderbot_template
+                break
+                ;;
+            11)
+                marzhelp_template
                 break
                 ;;
             0)
@@ -639,6 +644,85 @@ marzban_template() {
     confirm
 }
 
+
+marzhelp_template() {
+    log "Checking environment file..."
+    local env_file="/opt/marzban/.env"
+
+    [[ -f "$env_file" ]] || { error "Environment file not found: $env_file"; exit 1; }
+
+    # Check for MYSQL_ROOT_PASSWORD in .env
+    local MYSQL_ROOT_PASSWORD=$(grep -v '^#' "$env_file" | grep 'MYSQL_ROOT_PASSWORD' | awk -F '=' '{print $2}' | tr -d ' ' | tr -d '"' | tr -d "'")
+    if [[ -z "$MYSQL_ROOT_PASSWORD" ]]; then
+        error "MYSQL_ROOT_PASSWORD not found in $env_file. Please add it to the Marzban env file."
+        exit 1
+    fi
+
+    local db_type db_name db_user db_password db_host db_port
+    local BACKUP_DIRECTORIES=("/var/lib/marzban")  # Add default volume
+
+    # Extract SQLALCHEMY_DATABASE_URL from .env file
+    local SQLALCHEMY_DATABASE_URL=$(grep -v '^#' "$env_file" | grep 'SQLALCHEMY_DATABASE_URL' | awk -F '=' '{print $2}' | tr -d ' ' | tr -d '"' | tr -d "'")
+
+    if [[ -z "$SQLALCHEMY_DATABASE_URL" || "$SQLALCHEMY_DATABASE_URL" == *"sqlite3"* ]]; then
+        error "SQLite database detected. This script only supports MySQL/MariaDB databases."
+        exit 1
+    fi
+
+    # Parse SQLALCHEMY_DATABASE_URL to extract database details
+    if [[ "$SQLALCHEMY_DATABASE_URL" =~ ^(mysql\+pymysql|mariadb\+pymysql)://([^:]+):([^@]+)@([^:]+):([0-9]+)/(.+)$ ]]; then
+        db_type="${BASH_REMATCH[1]%%+*}"  # Extract mysql or mariadb
+        db_user="${BASH_REMATCH[2]}"
+        db_password="${BASH_REMATCH[3]}"
+        db_host="${BASH_REMATCH[4]}"
+        db_port="${BASH_REMATCH[5]}"
+        db_name="${BASH_REMATCH[6]}"
+    elif [[ "$SQLALCHEMY_DATABASE_URL" =~ ^(mysql\+pymysql|mariadb\+pymysql)://([^:]+):([^@]+)@([0-9.]+)/(.+)$ ]]; then
+        db_type="${BASH_REMATCH[1]%%+*}"  # Extract mysql or mariadb
+        db_user="${BASH_REMATCH[2]}"
+        db_password="${BASH_REMATCH[3]}"
+        db_host="${BASH_REMATCH[4]}"
+        db_port="3306"  # Default MySQL/MariaDB port
+        db_name="${BASH_REMATCH[5]}"
+    else
+        error "Invalid SQLALCHEMY_DATABASE_URL format in $env_file."
+        exit 1
+    fi
+
+    # Check if marzhelp database exists
+    log "Checking if marzhelp database exists..."
+    if ! mysqlshow -h "$db_host" -P "$db_port" -u root -p"$MYSQL_ROOT_PASSWORD" marzhelp &>/dev/null; then
+        error "marzhelp database not found or not accessible. Please ensure it exists and you have proper permissions."
+        exit 1
+    fi
+    
+    local MARZHELP_DB_PATH="/root/__${REMARK}${DATABASE_SUFFIX}"
+    local MARZHELP_BACKUP_COMMAND="mysqldump -h $db_host -P $db_port -u root -p'$MYSQL_ROOT_PASSWORD' 'marzhelp' > $MARZHELP_DB_PATH"
+    BACKUP_COMMANDS+=("$MARZHELP_BACKUP_COMMAND")
+    DIRECTORIES+=("$MARZHELP_DB_PATH")
+
+    add_directories "/opt/marzban"
+    add_directories "/var/lib/marzban"
+    success "Database type: $db_type"
+    success "Database user: $db_user"
+    success "Database password: $db_password"
+    success "Database host: $db_host"
+    success "Database port: $db_port"
+    success "Database name: $db_name"
+    success "MarzHelp database exists and is accessible"
+
+    local DB_PATH="/root/_${REMARK}${DATABASE_SUFFIX}"
+    # Generate backup command for MySQL/MariaDB
+    BACKUP_DB_COMMAND="mysqldump -h $db_host -P $db_port -u $db_user -p'$db_password' '$db_name' > $DB_PATH"
+    DIRECTORIES+=($DB_PATH)
+
+    # Export backup variables
+    BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
+    BACKUP_DB_COMMAND="$BACKUP_DB_COMMAND && $MARZHELP_BACKUP_COMMAND"  # Combine both commands
+    log "Complete Marzban + MarzHelp"
+    confirm
+}
+
 mirzabot_template() {
     log "Checking MirzaBot file..."
     local mirzabot_file='/var/www/html/mirzabotconfig/config.php'
@@ -972,7 +1056,7 @@ backup_name="/root/\${timestamp}_${REMARK}${BACKUP_SUFFIX}"
 base_name="/root/\${timestamp}_${REMARK}${TAG}"
 
 # Clean up old backup files (only specific backup files)
-rm -rf *"_${REMARK}${TAG}"* 2>/dev/null || true
+rm -rf *"${REMARK}${TAG}"* 2>/dev/null || true
 $DB_CLEANUP
 
 # Backup database
@@ -1004,7 +1088,7 @@ else
     exit 1
 fi
 
-rm -rf *"_${REMARK}${TAG}"* 2>/dev/null || true
+rm -rf *"${REMARK}${TAG}"* 2>/dev/null || true
 EOL
 
     # Make the script executable
