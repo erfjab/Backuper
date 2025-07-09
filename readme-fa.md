@@ -36,6 +36,7 @@
 - [x] **MirzaBot**  
 - [x] **WalBot**  
 - [x] **HolderBot**  
+- [x] **MarzHelp + Marzban**  
 
 ## نصب  
 
