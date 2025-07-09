@@ -702,6 +702,7 @@ marzhelp_template() {
     DIRECTORIES+=("$MARZHELP_DB_PATH")
 
     add_directories "/opt/marzban"
+    add_directories "/root/marzhelp.txt"
     add_directories "/var/lib/marzban"
     success "Database type: $db_type"
     success "Database user: $db_user"
