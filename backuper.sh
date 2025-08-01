@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# Global constants
 readonly SCRIPT_SUFFIX="_backuper_script.sh"
 readonly TAG="_backuper."
 readonly BACKUP_SUFFIX="${TAG}zip"
@@ -11,14 +10,11 @@ readonly OWNER="@ErfJabs"
 readonly SPONSORTEXT="خرید سرور مجازی ایران OkaCloud با تانلینگ اختصاصی رایگان"
 readonly SPONSORLINK="https://t.me/OkaCloud"
 
-
-# ANSI color codes
 declare -A COLORS=(
     [red]='\033[1;31m' [pink]='\033[1;35m' [green]='\033[1;92m'
     [spring]='\033[38;5;46m' [orange]='\033[1;38;5;208m' [cyan]='\033[1;36m' [reset]='\033[0m'
 )
 
-# Logging & Printing functions
 print() { echo -e "${COLORS[cyan]}$*${COLORS[reset]}"; }
 log() { echo -e "${COLORS[cyan]}[INFO]${COLORS[reset]} $*"; }
 warn() { echo -e "${COLORS[orange]}[WARN]${COLORS[reset]} $*" >&2; }
@@ -26,14 +22,11 @@ error() { echo -e "${COLORS[red]}[ERROR]${COLORS[reset]} $*" >&2; exit 1; }
 wrong() { echo -e "${COLORS[red]}[WRONG]${COLORS[reset]} $*" >&2; }
 success() { echo -e "${COLORS[spring]}${COLORS[green]}[SUCCESS]${COLORS[reset]} $*"; }
 
-# Interactive functions
 input() { read -p "$(echo -e "${COLORS[orange]}▶ $1${COLORS[reset]} ")" "$2"; }
 confirm() { read -p "$(echo -e "${COLORS[pink]}Press any key to continue...${COLORS[reset]}")"; }
 
-# Error handling
 trap 'error "An error occurred. Exiting..."' ERR
 
-# Utility functions
 check_root() {
     [[ $EUID -eq 0 ]] || error "This script must be run as root"
 }
@@ -328,16 +321,13 @@ generate_template() {
 add_directories() {
     local base_dir="$1"
 
-    # Check if base directory exists
     [[ ! -d "$base_dir" ]] && { warn "Directory not found: $base_dir"; return; }
 
-    # Find directories and filter based on exclude patterns
     mapfile -t items < <(find "$base_dir" -mindepth 1 -maxdepth 1 -type d \( -name "*mysql*" -prune -o -name "*mariadb*" -prune \) -o -print)
 
     for item in "${items[@]}"; do
         local exclude_item=false
 
-        # Check if item matches any exclude pattern
         for pattern in "${exclude_patterns[@]}"; do
             if [[ "$item" =~ $pattern ]]; then
                 exclude_item=true
@@ -345,7 +335,6 @@ add_directories() {
             fi
         done
 
-        # Add item to backup list if it doesn't match any exclude pattern
         if ! $exclude_item; then
             success "Added to backup: $item"
             DIRECTORIES+=("$item")
@@ -385,19 +374,15 @@ toggle_directories() {
 holderbot_template() {
     log "Checking HolderBot configuration..."
     
-    # Set default value for HOLDER_FOLDER if not set
     local HOLDER_FOLDER="/opt/erfjab/holderbot/"
 
-    # Check if the directory exists
     if [ ! -d "$HOLDER_FOLDER" ]; then
         error "Directory not found: $HOLDER_FOLDER"
         return 1
     fi
 
-    # Add the directory to BACKUP_DIRECTORIES
     add_directories "$HOLDER_FOLDER"
 
-    # Export backup variables
     BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
     log "Complete HolderBot"
     confirm
@@ -406,19 +391,15 @@ holderbot_template() {
 walbot_template() {
     log "Checking WalBot configuration..."
     
-    # Set default value for WALDB_FOLDER if not set
     local WALDB_FOLDER="/opt/walbot/"
 
-    # Check if the directory exists
     if [ ! -d "$WALDB_FOLDER" ]; then
         error "Directory not found: $WALDB_FOLDER"
         return 1
     fi
 
-    # Add the directory to BACKUP_DIRECTORIES
     add_directories "$WALDB_FOLDER"
 
-    # Export backup variables
     BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
     log "Complete WalBot"
     confirm
@@ -427,19 +408,15 @@ walbot_template() {
 xui_template() {
     log "Checking X-ui configuration..."
     
-    # Set default value for XUI_DB_FOLDER if not set
     local XUI_DB_FOLDER="${XUI_DB_FOLDER:-/etc/x-ui}"
 
-    # Check if the directory exists
     if [ ! -d "$XUI_DB_FOLDER" ]; then
         error "Directory not found: $XUI_DB_FOLDER"
         return 1
     fi
 
-    # Add the directory to BACKUP_DIRECTORIES
     add_directories "$XUI_DB_FOLDER"
 
-    # Export backup variables
     BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
     log "Complete X-ui"
     confirm
@@ -448,19 +425,15 @@ xui_template() {
 sui_template() {
     log "Checking S-ui configuration..."
     
-    # Set default value for XUI_DB_FOLDER if not set
     local SUI_DB_FOLDER="${SUI_DB_FOLDER:-/usr/local/s-ui/db}"
 
-    # Check if the directory exists
     if [ ! -d "$SUI_DB_FOLDER" ]; then
         error "Directory not found: $SUI_DB_FOLDER"
         return 1
     fi
 
-    # Add the directory to BACKUP_DIRECTORIES
     add_directories "$SUI_DB_FOLDER"
 
-    # Export backup variables
     BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
     log "Complete S-ui"
     confirm
@@ -470,32 +443,26 @@ marzneshin_logs_template() {
     log "Checking Marzneshin configuration..."
     local docker_compose_file="/etc/opt/marzneshin/docker-compose.yml"
 
-    # Check if docker-compose file exists
     if [[ ! -f "$docker_compose_file" ]]; then
         error "Docker compose file not found: $docker_compose_file"
         return 1
     fi
 
-    # Define log file path
     local DB_PATH="/root/_${REMARK}${LOGS_SUFFIX}"
 
-    # Check if marzneshin command exists
     if ! command -v marzneshin &> /dev/null; then
         error "marzneshin command not found. Please ensure it is installed."
         return 1
     fi
 
-    # Run marzneshin logs command
     if ! marzneshin logs --no-follow > "$DB_PATH"; then
         error "Failed to export Marzneshin logs to $DB_PATH"
         return 1
     fi
 
-    # Add log file path to DIRECTORIES
     DIRECTORIES=()
     DIRECTORIES+=($DB_PATH)
 
-    # Export backup variables
     BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
     log "Marzneshin logs backup completed successfully."
     confirm
@@ -505,17 +472,14 @@ marzneshin_template() {
     log "Checking Marzneshin configuration..."
     local docker_compose_file="/etc/opt/marzneshin/docker-compose.yml"
 
-    # Check if docker-compose file exists
     [[ -f "$docker_compose_file" ]] || { error "Docker compose file not found: $docker_compose_file"; return 1; }
 
-    # Extract database configuration
     local db_type db_name db_password db_port
     DB_TYPE=$(yq eval '.services.db.image' "$docker_compose_file")
     DB_NAME=$(yq eval '.services.db.environment.MARIADB_DATABASE // .services.db.environment.MYSQL_DATABASE' "$docker_compose_file")
     DB_PASSWORD=$(yq eval '.services.db.environment.MARIADB_ROOT_PASSWORD // .services.db.environment.MYSQL_ROOT_PASSWORD' "$docker_compose_file")
     DB_PORT=$(yq eval '.services.db.ports[0]' "$docker_compose_file" | cut -d':' -f2)
 
-    # Determine database type
     if [[ "$DB_TYPE" == *"mariadb"* ]]; then
         DB_TYPE="mariadb"
     elif [[ "$DB_TYPE" == *"mysql"* ]]; then
@@ -524,21 +488,17 @@ marzneshin_template() {
         DB_TYPE="sqlite"
     fi
 
-    # Validate database password for non-sqlite databases
     if [[ "$DB_TYPE" != "sqlite" && -z "$DB_PASSWORD" ]]; then
         error "Database password not found"
         return 1
     fi
 
-    # Setup backup configuration
     local DB_PATH="/root/_${REMARK}${DATABASE_SUFFIX}"
     DIRECTORIES=()
 
-    # Scan default DIRECTORIES
     log "Scanning DIRECTORIES..."
     add_directories "/etc/opt/marzneshin"
 
-    # Extract volumes from docker-compose
     log "Extracting volumes from docker-compose..."
     for service in $(yq eval '.services | keys | .[]' "$docker_compose_file"); do
         for volume in $(yq eval ".services.$service.volumes | .[]" "$docker_compose_file" 2>/dev/null | awk -F ':' '{print $1}'); do
@@ -546,13 +506,11 @@ marzneshin_template() {
         done
     done
 
-    # Generate backup command for non-sqlite databases
     if [[ "$DB_TYPE" != "sqlite" ]]; then
         BACKUP_DB_COMMAND="mysqldump -h 127.0.0.1 --column-statistics=0 -P $DB_PORT -u root -p'$DB_PASSWORD' '$DB_NAME' > $DB_PATH"
         DIRECTORIES+=($DB_PATH)
     fi
 
-    # Export backup variables
     BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
     log "Complete Marzneshin"
     confirm
@@ -562,32 +520,26 @@ marzban_logs_template() {
     log "Checking Marzban configuration..."
     local docker_compose_file="/opt/marzban/docker-compose.yml"
 
-    # Check if docker-compose file exists
     if [[ ! -f "$docker_compose_file" ]]; then
         error "Docker compose file not found: $docker_compose_file"
         return 1
     fi
 
-    # Define log file path
     local DB_PATH="/root/_${REMARK}${LOGS_SUFFIX}"
 
-    # Check if marzban command exists
     if ! command -v marzban &> /dev/null; then
         error "marzban command not found. Please ensure it is installed."
         return 1
     fi
 
-    # Run marzban logs command
     if ! marzban logs --no-follow > "$DB_PATH"; then
         error "Failed to export marzban logs to $DB_PATH"
         return 1
     fi
 
-    # Add log file path to DIRECTORIES
     DIRECTORIES=()
     DIRECTORIES+=($DB_PATH)
 
-    # Export backup variables
     BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
     log "marzban logs backup completed successfully."
     confirm
@@ -600,9 +552,8 @@ marzban_template() {
     [[ -f "$env_file" ]] || { error "Environment file not found: $env_file"; return 1; }
 
     local db_type db_name db_user db_password db_host db_port
-    local BACKUP_DIRECTORIES=("/var/lib/marzban")  # Add default volume
+    local BACKUP_DIRECTORIES=("/var/lib/marzban")
 
-    # Extract SQLALCHEMY_DATABASE_URL from .env file
     local SQLALCHEMY_DATABASE_URL=$(grep -v '^#' "$env_file" | grep 'SQLALCHEMY_DATABASE_URL' | awk -F '=' '{print $2}' | tr -d ' ' | tr -d '"' | tr -d "'")
 
     if [[ -z "$SQLALCHEMY_DATABASE_URL" || "$SQLALCHEMY_DATABASE_URL" == *"sqlite3"* ]]; then
@@ -613,20 +564,19 @@ marzban_template() {
         db_host=""
         db_port=""
     else
-        # Parse SQLALCHEMY_DATABASE_URL to extract database details
         if [[ "$SQLALCHEMY_DATABASE_URL" =~ ^(mysql\+pymysql|mariadb\+pymysql)://([^:]+):([^@]+)@([^:]+):([0-9]+)/(.+)$ ]]; then
-            db_type="${BASH_REMATCH[1]%%+*}"  # Extract mysql or mariadb
+            db_type="${BASH_REMATCH[1]%%+*}"
             db_user="${BASH_REMATCH[2]}"
             db_password="${BASH_REMATCH[3]}"
             db_host="${BASH_REMATCH[4]}"
             db_port="${BASH_REMATCH[5]}"
             db_name="${BASH_REMATCH[6]}"
         elif [[ "$SQLALCHEMY_DATABASE_URL" =~ ^(mysql\+pymysql|mariadb\+pymysql)://([^:]+):([^@]+)@([0-9.]+)/(.+)$ ]]; then
-            db_type="${BASH_REMATCH[1]%%+*}"  # Extract mysql or mariadb
+            db_type="${BASH_REMATCH[1]%%+*}"
             db_user="${BASH_REMATCH[2]}"
             db_password="${BASH_REMATCH[3]}"
             db_host="${BASH_REMATCH[4]}"
-            db_port="3306"  # Default MySQL/MariaDB port
+            db_port="3306"
             db_name="${BASH_REMATCH[5]}"
         else
             error "Invalid SQLALCHEMY_DATABASE_URL format in $env_file."
@@ -643,13 +593,11 @@ marzban_template() {
     success "Database name: $db_name"
 
     local DB_PATH="/root/_${REMARK}${DATABASE_SUFFIX}"
-    # Generate backup command for MySQL/MariaDB
     if [[ "$db_type" != "sqlite3" ]]; then
         BACKUP_DB_COMMAND="mysqldump -h $db_host -P $db_port -u $db_user -p'$db_password' '$db_name' > $DB_PATH"
         DIRECTORIES+=($DB_PATH)
     fi
 
-    # Export backup variables
     BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
     log "Complete Marzban"
     confirm
@@ -662,7 +610,6 @@ marzhelp_template() {
 
     [[ -f "$env_file" ]] || { error "Environment file not found: $env_file"; exit 1; }
 
-    # Check for MYSQL_ROOT_PASSWORD in .env
     local MYSQL_ROOT_PASSWORD=$(grep -v '^#' "$env_file" | grep 'MYSQL_ROOT_PASSWORD' | awk -F '=' '{print $2}' | tr -d ' ' | tr -d '"' | tr -d "'")
     if [[ -z "$MYSQL_ROOT_PASSWORD" ]]; then
         error "MYSQL_ROOT_PASSWORD not found in $env_file. Please add it to the Marzban env file."
@@ -670,9 +617,8 @@ marzhelp_template() {
     fi
 
     local db_type db_name db_user db_password db_host db_port
-    local BACKUP_DIRECTORIES=("/var/lib/marzban")  # Add default volume
+    local BACKUP_DIRECTORIES=("/var/lib/marzban")
 
-    # Extract SQLALCHEMY_DATABASE_URL from .env file
     local SQLALCHEMY_DATABASE_URL=$(grep -v '^#' "$env_file" | grep 'SQLALCHEMY_DATABASE_URL' | awk -F '=' '{print $2}' | tr -d ' ' | tr -d '"' | tr -d "'")
 
     if [[ -z "$SQLALCHEMY_DATABASE_URL" || "$SQLALCHEMY_DATABASE_URL" == *"sqlite3"* ]]; then
@@ -680,27 +626,25 @@ marzhelp_template() {
         exit 1
     fi
 
-    # Parse SQLALCHEMY_DATABASE_URL to extract database details
     if [[ "$SQLALCHEMY_DATABASE_URL" =~ ^(mysql\+pymysql|mariadb\+pymysql)://([^:]+):([^@]+)@([^:]+):([0-9]+)/(.+)$ ]]; then
-        db_type="${BASH_REMATCH[1]%%+*}"  # Extract mysql or mariadb
+        db_type="${BASH_REMATCH[1]%%+*}"
         db_user="${BASH_REMATCH[2]}"
         db_password="${BASH_REMATCH[3]}"
         db_host="${BASH_REMATCH[4]}"
         db_port="${BASH_REMATCH[5]}"
         db_name="${BASH_REMATCH[6]}"
     elif [[ "$SQLALCHEMY_DATABASE_URL" =~ ^(mysql\+pymysql|mariadb\+pymysql)://([^:]+):([^@]+)@([0-9.]+)/(.+)$ ]]; then
-        db_type="${BASH_REMATCH[1]%%+*}"  # Extract mysql or mariadb
+        db_type="${BASH_REMATCH[1]%%+*}"
         db_user="${BASH_REMATCH[2]}"
         db_password="${BASH_REMATCH[3]}"
         db_host="${BASH_REMATCH[4]}"
-        db_port="3306"  # Default MySQL/MariaDB port
+        db_port="3306"
         db_name="${BASH_REMATCH[5]}"
     else
         error "Invalid SQLALCHEMY_DATABASE_URL format in $env_file."
         exit 1
     fi
 
-    # Check if marzhelp database exists
     log "Checking if marzhelp database exists..."
     if ! mysqlshow -h "$db_host" -P "$db_port" -u root -p"$MYSQL_ROOT_PASSWORD" marzhelp &>/dev/null; then
         error "marzhelp database not found or not accessible. Please ensure it exists and you have proper permissions."
@@ -724,13 +668,11 @@ marzhelp_template() {
     success "MarzHelp database exists and is accessible"
 
     local DB_PATH="/root/_${REMARK}${DATABASE_SUFFIX}"
-    # Generate backup command for MySQL/MariaDB
     BACKUP_DB_COMMAND="mysqldump -h $db_host -P $db_port -u $db_user -p'$db_password' '$db_name' > $DB_PATH"
     DIRECTORIES+=($DB_PATH)
 
-    # Export backup variables
     BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
-    BACKUP_DB_COMMAND="$BACKUP_DB_COMMAND && $MARZHELP_BACKUP_COMMAND"  # Combine both commands
+    BACKUP_DB_COMMAND="$BACKUP_DB_COMMAND && $MARZHELP_BACKUP_COMMAND"
     log "Complete Marzban + MarzHelp"
     confirm
 }
@@ -741,23 +683,19 @@ mirzabot_template() {
     
     [[ -f "$mirzabot_file" ]] || { error "MirzaBot file not found: $mirzabot_file"; return 1; }
 
-    # Extract database values from config.php
     db_name=$(grep -m 1 "\$dbname" $mirzabot_file | sed -E "s/.*dbname\s*=\s*'([^']+)'.*/\1/")
     db_user=$(grep -m 1 "\$usernamedb" $mirzabot_file | sed -E "s/.*usernamedb\s*=\s*'([^']+)'.*/\1/")
     db_password=$(grep -m 1 "\$passworddb" $mirzabot_file | sed -E "s/.*passworddb\s*=\s*'([^']+)'.*/\1/")
 
-    # Check if the values are extracted correctly
     if [ -z "$db_name" ] || [ -z "$db_password" ] || [ -z "$db_user" ]; then
         error "Failed to extract database values from $mirzabot_file."
         exit 1
     fi
 
-    # Generate backup command for MySQL/MariaDB
     local DB_PATH="/root/_${REMARK}${DATABASE_SUFFIX}"
     BACKUP_DB_COMMAND="mysqldump -u $db_user -p'$db_password' '$db_name' > $DB_PATH"
     DIRECTORIES+=($DB_PATH)
 
-    # Export backup variables
     BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
     log "Complete MirzaBot"
     confirm
@@ -766,17 +704,14 @@ mirzabot_template() {
 hiddify_template() {
     log "Checking Hiddify configuration..."
     
-    # Set default value for HIDDIFY_DB_FOLDER if not set
     local HIDDIFY_DB_FOLDER="/opt/hiddify-manager/hiddify-panel/backup.sh"
     local BACKUP_FOLDER="/opt/hiddify-manager/hiddify-panel/backup"
 
-    # Check if the backup script exists
     if [ ! -f "$HIDDIFY_DB_FOLDER" ]; then
         error "Backup script not found: $HIDDIFY_DB_FOLDER"
         return 1
     fi
 
-    # Create backup directory if it doesn't exist
     if [ ! -d "$BACKUP_FOLDER" ]; then
         log "Creating backup directory: $BACKUP_FOLDER"
         mkdir -p "$BACKUP_FOLDER"
@@ -786,18 +721,14 @@ hiddify_template() {
         fi
     fi
 
-    # Set full access permissions to the backup directory and script
     log "Setting permissions for backup directory and script..."
     chmod -R 755 "$BACKUP_FOLDER"
     chmod 755 "$HIDDIFY_DB_FOLDER"
 
-    # Add the directory to BACKUP_DIRECTORIES
     add_directories "$BACKUP_FOLDER"
 
-    # Set the backup command
     BACKUP_DB_COMMAND="bash $HIDDIFY_DB_FOLDER"
 
-    # Export backup variables
     BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
     log "Hiddify configuration completed successfully."
     confirm
@@ -813,14 +744,12 @@ generate_password() {
     while true; do
         input "Enter the password for the archive (or press Enter to skip): " PASSWORD
         
-        # If password is empty, skip password protection
         if [ -z "$PASSWORD" ]; then
             success "No password will be set for the archive."
             COMPRESS="zip -9 -r -s ${LIMITSIZE}m"
             break
         fi
 
-        # Validate password
         if [[ ! "$PASSWORD" =~ ^[a-zA-Z0-9]{8,}$ ]]; then
             wrong "Password must be at least 8 characters long and contain only letters and numbers. Please try again."
             continue
@@ -880,7 +809,6 @@ telegram_progress() {
     print "To use Telegram, you need to provide a bot token and a chat ID.\n"
 
     while true; do
-        # Get bot token
         while true; do
             input "Enter the bot token: " BOT_TOKEN
             if [[ -z "$BOT_TOKEN" ]]; then
@@ -892,7 +820,6 @@ telegram_progress() {
             fi
         done
 
-        # Get chat ID
         while true; do
             input "Enter the chat ID: " CHAT_ID
             if [[ -z "$CHAT_ID" ]]; then
@@ -904,7 +831,6 @@ telegram_progress() {
             fi
         done
 
-        # Validate bot token and chat ID
         log "Checking Telegram bot..."
         response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" -d chat_id="$CHAT_ID" -d text="Hi, Backuper Test Message!")
         if [[ "$response" -ne 200 ]]; then
@@ -915,7 +841,6 @@ telegram_progress() {
         fi
     done
 
-    # Set the platform command for sending files
     PLATFORM_COMMAND="curl -s -F \"chat_id=$CHAT_ID\" -F \"document=@\$FILE\" -F \"caption=\$CAPTION\" -F \"parse_mode=HTML\" \"https://api.telegram.org/bot$BOT_TOKEN/sendDocument\""
     CAPTION="
 📦 <b>From </b><code>\${ip}</code> [By <b><a href='https://t.me/erfjabs'>@ErfJabs</a></b>]
@@ -932,7 +857,6 @@ discord_progress() {
     print "To use Discord, you need to provide a Webhook URL.\n"
 
     while true; do
-        # Get Discord Webhook URL
         while true; do
             input "Enter the Discord Webhook URL: " DISCORD_WEBHOOK
             if [[ -z "$DISCORD_WEBHOOK" ]]; then
@@ -943,7 +867,6 @@ discord_progress() {
                 break
             fi
         done
-        # Validate Webhook
         log "Checking Discord Webhook..."
         response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$DISCORD_WEBHOOK" -H "Content-Type: application/json" -d '{"content": "Hi, Backuper Test Message!"}')
         
@@ -955,7 +878,6 @@ discord_progress() {
         fi
     done
 
-    # Set the platform command for sending files
     PLATFORM_COMMAND="curl -s -F \"file=@\$FILE\" -F \"payload_json={\\\"content\\\": \\\"\$CAPTION\\\"}\" \"$DISCORD_WEBHOOK\""
     CAPTION="📦 **From** \`${ip}\` [by **[@ErfJabs](https://t.me/erfjabs)**]\n➖➖➖➖**Sponsor**➖➖➖➖\n[${SPONSORTEXT}](${SPONSORLINK})"
     LIMITSIZE=24
@@ -1055,33 +977,27 @@ generate_script() {
         DB_CLEANUP="rm -rf "$DB_PATH" 2>/dev/null || true"
     fi
     
-    # Create the backup script
     cat <<EOL > "$BACKUP_PATH"
 #!/bin/bash
 set -e 
 
-# Variables
 ip=\$(hostname -I | awk '{print \$1}')
 timestamp=\$(TZ='Asia/Tehran' date +%m%d-%H%M)
 CAPTION="${CAPTION}"
 backup_name="/root/\${timestamp}_${REMARK}${BACKUP_SUFFIX}"
 base_name="/root/\${timestamp}_${REMARK}${TAG}"
 
-# Clean up old backup files (only specific backup files)
 rm -rf *"${REMARK}${TAG}"* 2>/dev/null || true
 $DB_CLEANUP
 
-# Backup database
 $BACKUP_DB_COMMAND
 
-# Compress files
 if ! $COMPRESS "\$backup_name" ${BACKUP_DIRECTORIES[@]}; then
     message="Failed to compress ${REMARK} files. Please check the server."
     echo "\$message"
     exit 1
 fi
 
-# Send backup files
 if ls \${base_name}* > /dev/null 2>&1; then
     for FILE in \${base_name}*; do
         echo "Sending file: \$FILE"
@@ -1103,16 +1019,13 @@ fi
 rm -rf *"${REMARK}${TAG}"* 2>/dev/null || true
 EOL
 
-    # Make the script executable
     chmod +x "$BACKUP_PATH"
     success "Backup script created: $BACKUP_PATH"
     
-    # Run the backup script with realtime output
     log "Running the backup script..."
     if bash "$BACKUP_PATH" 2>&1 | tee /tmp/backup.log; then
         success "Backup script run successfully."
         
-        # Set up cron job
         log "Setting up cron job..."
         if (crontab -l 2>/dev/null; echo "$TIMER $BACKUP_PATH") | crontab -; then
             success "Cron job set up successfully. Backups will run every $minutes minutes."
@@ -1121,7 +1034,6 @@ EOL
             exit 1
         fi
         
-        # Final success message
         success "🎉 Your backup system is set up and running!"
         success "Backup script location: $BACKUP_PATH"
         success "Cron job: Every $minutes minutes"
