@@ -266,6 +266,7 @@ generate_template() {
     print "9) Walpanel"
     print "10) HolderBot"
     print "11) MarzHelp + Marzban"
+    print "12) Phantom"
     print "0) Custom"
     print ""
     while true; do
@@ -313,6 +314,10 @@ generate_template() {
                 ;;
             11)
                 marzhelp_template
+                break
+                ;;
+            12)
+                phantom_template
                 break
                 ;;
             0)
@@ -423,6 +428,28 @@ walpanel_template() {
     log "Complete WalPanel"
     confirm
 }
+
+phantom_template() {
+    log "Checking Phantom configuration..."
+
+    # Set default value for PHANTOM_FOLDER if not set
+    local PHANTOM_FOLDER="/etc/phantom/config.db"
+
+    # Check if the directory exists
+    if [ ! -d "$PHANTOM_FOLDER" ]; then
+        error "Directory not found: $PHANTOM_FOLDER"
+        return 1
+    fi
+
+    # Add the directory to BACKUP_DIRECTORIES
+    add_directories "$PHANTOM_FOLDER"
+
+    # Export backup variables
+    BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
+    log "Complete Phantom"
+    confirm
+}
+
 
 xui_template() {
     log "Checking X-ui configuration..."
