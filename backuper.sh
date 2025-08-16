@@ -43,7 +43,7 @@ detect_package_manager() {
         echo "apt"
     elif command -v dnf &>/dev/null; then
         echo "dnf"
-    elif command -v yum &>/dev/null; then
+    elif command -v yum &>/dev/null;
         echo "yum"
     elif command -v pacman &>/dev/null; then
         echo "pacman"
@@ -541,12 +541,14 @@ marzneshin_template() {
     DB_NAME=$(yq eval '.services.db.environment.MARIADB_DATABASE // .services.db.environment.MYSQL_DATABASE' "$docker_compose_file")
     DB_PASSWORD=$(yq eval '.services.db.environment.MARIADB_ROOT_PASSWORD // .services.db.environment.MYSQL_ROOT_PASSWORD' "$docker_compose_file")
     DB_PORT=$(yq eval '.services.db.ports[0]' "$docker_compose_file" | cut -d':' -f2)
+    local DUMP_FLAGS=""
 
     # Determine database type
     if [[ "$DB_TYPE" == *"mariadb"* ]]; then
         DB_TYPE="mariadb"
     elif [[ "$DB_TYPE" == *"mysql"* ]]; then
         DB_TYPE="mysql"
+        DUMP_FLAGS="--column-statistics=0"
     else
         DB_TYPE="sqlite"
     fi
@@ -575,7 +577,7 @@ marzneshin_template() {
 
     # Generate backup command for non-sqlite databases
     if [[ "$DB_TYPE" != "sqlite" ]]; then
-        BACKUP_DB_COMMAND="mysqldump -h 127.0.0.1 --column-statistics=0 -P $DB_PORT -u root -p'$DB_PASSWORD' '$DB_NAME' > $DB_PATH"
+        BACKUP_DB_COMMAND="mysqldump -h 127.0.0.1 ${DUMP_FLAGS} -P $DB_PORT -u root -p'$DB_PASSWORD' '$DB_NAME' > $DB_PATH"
         DIRECTORIES+=($DB_PATH)
     fi
 
@@ -627,6 +629,7 @@ marzban_template() {
     [[ -f "$env_file" ]] || { error "Environment file not found: $env_file"; return 1; }
 
     local db_type db_name db_user db_password db_host db_port
+    local DUMP_FLAGS=""
     local BACKUP_DIRECTORIES=("/var/lib/marzban")  # Add default volume
 
     # Extract SQLALCHEMY_DATABASE_URL from .env file
@@ -669,10 +672,15 @@ marzban_template() {
     success "Database port: $db_port"
     success "Database name: $db_name"
 
+    # Conditionally set mysqldump flags based on DB type
+    if [[ "$db_type" == "mysql" ]]; then
+        DUMP_FLAGS="--column-statistics=0"
+    fi
+
     local DB_PATH="/root/_${REMARK}${DATABASE_SUFFIX}"
     # Generate backup command for MySQL/MariaDB
     if [[ "$db_type" != "sqlite3" ]]; then
-        BACKUP_DB_COMMAND="mysqldump -h $db_host -P $db_port -u $db_user -p'$db_password' '$db_name' > $DB_PATH"
+        BACKUP_DB_COMMAND="mysqldump -h $db_host -P $db_port -u $db_user -p'$db_password' $DUMP_FLAGS '$db_name' > $DB_PATH"
         DIRECTORIES+=($DB_PATH)
     fi
 
@@ -697,6 +705,7 @@ marzhelp_template() {
     fi
 
     local db_type db_name db_user db_password db_host db_port
+    local DUMP_FLAGS=""
     local BACKUP_DIRECTORIES=("/var/lib/marzban")  # Add default volume
 
     # Extract SQLALCHEMY_DATABASE_URL from .env file
@@ -727,6 +736,11 @@ marzhelp_template() {
         exit 1
     fi
 
+    # Conditionally set mysqldump flags based on DB type
+    if [[ "$db_type" == "mysql" ]]; then
+        DUMP_FLAGS="--column-statistics=0"
+    fi
+
     # Check if marzhelp database exists
     log "Checking if marzhelp database exists..."
     if ! mysqlshow -h "$db_host" -P "$db_port" -u root -p"$MYSQL_ROOT_PASSWORD" marzhelp &>/dev/null; then
@@ -735,7 +749,7 @@ marzhelp_template() {
     fi
     
     local MARZHELP_DB_PATH="/root/__${REMARK}${DATABASE_SUFFIX}"
-    local MARZHELP_BACKUP_COMMAND="mysqldump -h $db_host -P $db_port -u root -p'$MYSQL_ROOT_PASSWORD' 'marzhelp' > $MARZHELP_DB_PATH"
+    local MARZHELP_BACKUP_COMMAND="mysqldump -h $db_host -P $db_port -u root -p'$MYSQL_ROOT_PASSWORD' $DUMP_FLAGS 'marzhelp' > $MARZHELP_DB_PATH"
     BACKUP_COMMANDS+=("$MARZHELP_BACKUP_COMMAND")
     DIRECTORIES+=("$MARZHELP_DB_PATH")
 
@@ -752,7 +766,7 @@ marzhelp_template() {
 
     local DB_PATH="/root/_${REMARK}${DATABASE_SUFFIX}"
     # Generate backup command for MySQL/MariaDB
-    BACKUP_DB_COMMAND="mysqldump -h $db_host -P $db_port -u $db_user -p'$db_password' '$db_name' > $DB_PATH"
+    BACKUP_DB_COMMAND="mysqldump -h $db_host -P $db_port -u $db_user -p'$db_password' $DUMP_FLAGS '$db_name' > $DB_PATH"
     DIRECTORIES+=($DB_PATH)
 
     # Export backup variables
