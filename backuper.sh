@@ -72,7 +72,7 @@ update_os() {
 
 install_dependencies() {
     local package_manager=$(detect_package_manager)
-    local packages=("wget" "zip" "cron" "msmtp" "mutt")
+    local packages=("wget" "zip" "cron" "msmtp" "mutt" "postgresql-client")
 
     log "Installing dependencies: ${packages[*]}..."
     
@@ -258,16 +258,17 @@ generate_template() {
     print "1) X-ui"
     print "2) S-ui"
     print "3) Hiddify"
-    print "4) Marzneshin"
-    print "5) Marzneshin Logs"
-    print "6) Marzban"
-    print "7) Marzban Logs"
-    print "8) MirzaBot"
-    print "9) Walpanel"
-    print "10) HolderBot"
-    print "11) MarzHelp + Marzban"
-    print "12) Phantom"
-    print "13) OvPanel"
+    print "4) Remnawave"
+    print "5) Marzneshin"
+    print "6) Marzneshin Logs"
+    print "7) Marzban"
+    print "8) Marzban Logs"
+    print "9) MirzaBot"
+    print "10) Walpanel"
+    print "11) HolderBot"
+    print "12) MarzHelp + Marzban"
+    print "13) Phantom"
+    print "14) OvPanel"
     print "0) Custom"
     print ""
     while true; do
@@ -286,42 +287,46 @@ generate_template() {
                 break
                 ;;
             4)
-                marzneshin_template
+                remnawave_template
                 break
                 ;;
             5)
-                marzneshin_logs_template
+                marzneshin_template
                 break
                 ;;
             6)
-                marzban_template
+                marzneshin_logs_template
                 break
                 ;;
             7)
-                marzban_logs_template
+                marzban_template
                 break
                 ;;
             8)
-                mirzabot_template
+                marzban_logs_template
                 break
                 ;;
             9)
-                walpanel_template
+                mirzabot_template
                 break
                 ;;
             10)
-                holderbot_template
+                walpanel_template
                 break
                 ;;
             11)
-                marzhelp_template
+                holderbot_template
                 break
                 ;;
             12)
-                phantom_template
+                marzhelp_template
                 break
                 ;;
             13)
+                phantom_template
+                break
+                ;;
+            14)
                 ovpanel_template
                 break
                 ;;
@@ -391,6 +396,51 @@ toggle_directories() {
     done
     BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
 }
+
+remnawave_template() {
+    log "Checking Remnawave configuration..."
+
+    local REMNAWAVE_DR="/opt/remnawave"
+    if [ ! -d "$REMNAWAVE_DR" ]; then
+        error "Directory not found: $REMNAWAVE_DR"
+        return 1
+    fi
+
+    env_file="/opt/remnawave/.env"
+    if [ ! -f "$env_file" ]; then
+        error "Environment file not found: $env_file"
+        return 1
+    fi
+
+    # Extract SQLALCHEMY_DATABASE_URL from .env file
+    local SQLALCHEMY_DATABASE_URL=$(grep -v '^#' "$env_file" | grep 'DATABASE_URL' | awk -F '=' '{print $2}' | tr -d ' ' | tr -d '"' | tr -d "'")
+
+    if [[ "$SQLALCHEMY_DATABASE_URL" =~ ^postgresql://([^:]+):([^@]+)@([^:]+):([0-9]+)/(.+)$ ]]; then
+        db_user="${BASH_REMATCH[1]}"
+        db_password="${BASH_REMATCH[2]}"
+        db_name="${BASH_REMATCH[5]}"
+    else
+        error "Invalid DATABASE_URL format in $env_file."
+        return 1
+    fi
+
+    add_directories "$REMNAWAVE_DR"
+    success "Database user: $db_user"
+    success "Database password: $db_password"
+    success "Database name: $db_name"
+
+    local DB_PATH="/root/_${REMARK}_${db_name}.sql"
+
+    BACKUP_DB_COMMAND="docker exec -e PGPASSWORD='$db_password' \$(docker ps --filter 'publish=6767' --format '{{.Names}}' | head -n 1) pg_dump -U $db_user '$db_name' > $DB_PATH"
+    DIRECTORIES+=($DB_PATH)
+
+    # Export backup variables
+    BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
+    log "Complete Remnawave"
+    confirm
+
+}
+
 
 ovpanel_template() {
     log "Checking OvPanel configuration..."

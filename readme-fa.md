@@ -29,6 +29,7 @@
 - [x] **X-ui**
 - [x] **S-ui**
 - [x] **Hiddify**
+- [x] **Remnawave**
 - [x] **Marzneshin**
 - [x] **Marzneshin Logs**
 - [x] **Marzban**
@@ -39,6 +40,7 @@
 - [x] **MarzHelp + Marzban**
 - [x] **Phantom**
 - [x] **OvPanel**
+- [x] **Remnawave**
 
 ## نصب  
 
