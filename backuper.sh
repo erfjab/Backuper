@@ -270,6 +270,7 @@ generate_template() {
     print "13) Phantom"
     print "14) OvPanel"
     print "15) MarzGozir"
+    print "16) PasarGuard"
     print "0) Custom"
     print ""
     while true; do
@@ -333,6 +334,10 @@ generate_template() {
                 ;;
             15)
                 marzgozir_template
+                break
+                ;;
+            16)
+                pasarguard_template
                 break
                 ;;
             0)
@@ -400,6 +405,93 @@ toggle_directories() {
         fi
     done
     BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
+}
+
+pasarguard_template() {
+    log "Checking PasarGuard configuration..."
+    local env_file="/opt/pasarguard/.env"
+
+    [[ -f "$env_file" ]] || { error "Environment file not found: $env_file"; return 1; }
+
+    local db_type db_name db_user db_password db_host db_port
+    local BACKUP_DIRECTORIES=("/var/lib/pasarguard")  
+
+    local DATABASE_URL=$(grep -v '^#' "$env_file" | grep 'SQLALCHEMY_DATABASE_URL' | awk -F '=' '{print $2}' | tr -d ' ' | tr -d '"' | tr -d "'")
+    log "Detected DATABASE_URL: $DATABASE_URL"
+    if [[ -z "$DATABASE_URL" || "$DATABASE_URL" == *"sqlite"* ]]; then
+        db_type="sqlite"
+        db_name=""
+        db_user=""
+        db_password=""
+        db_host=""
+        db_port=""
+    else
+        if [[ "$DATABASE_URL" =~ ^(postgresql|postgres|timescaledb)(\+[a-z0-9]+)?://([^:]+):([^@]+)@([^:]+):([0-9]+)/(.+)$ ]]; then
+            db_type="${BASH_REMATCH[1]}"
+            [[ "$db_type" == "postgres" ]] && db_type="postgresql"
+            [[ "$db_type" == "timescaledb" ]] && db_type="postgresql"
+            db_user="${BASH_REMATCH[3]}"
+            db_password="${BASH_REMATCH[4]}"
+            db_host="${BASH_REMATCH[5]}"
+            db_port="${BASH_REMATCH[6]}"
+            db_name="${BASH_REMATCH[7]}"
+        elif [[ "$DATABASE_URL" =~ ^(postgresql|postgres|timescaledb)(\+[a-z0-9]+)?://([^:]+):([^@]+)@([^/]+)/(.+)$ ]]; then
+            db_type="${BASH_REMATCH[1]}"
+            [[ "$db_type" == "postgres" ]] && db_type="postgresql"
+            [[ "$db_type" == "timescaledb" ]] && db_type="postgresql"
+            db_user="${BASH_REMATCH[3]}"
+            db_password="${BASH_REMATCH[4]}"
+            db_host="${BASH_REMATCH[5]}"
+            db_port="5432"
+            db_name="${BASH_REMATCH[6]}"
+        elif [[ "$DATABASE_URL" =~ ^(mysql|mariadb)(\+[a-z0-9]+)?://([^:]+):([^@]+)@([^:]+):([0-9]+)/(.+)$ ]]; then
+            db_type="${BASH_REMATCH[1]}"
+            db_user="${BASH_REMATCH[3]}"
+            db_password="${BASH_REMATCH[4]}"
+            db_host="${BASH_REMATCH[5]}"
+            db_port="${BASH_REMATCH[6]}"
+            db_name="${BASH_REMATCH[7]}"
+        elif [[ "$DATABASE_URL" =~ ^(mysql|mariadb)(\+[a-z0-9]+)?://([^:]+):([^@]+)@([^/]+)/(.+)$ ]]; then
+            db_type="${BASH_REMATCH[1]}"
+            db_user="${BASH_REMATCH[3]}"
+            db_password="${BASH_REMATCH[4]}"
+            db_host="${BASH_REMATCH[5]}"
+            db_port="3306"
+            db_name="${BASH_REMATCH[6]}"
+        else
+            error "Invalid DATABASE_URL format in $env_file."
+            return 1
+        fi
+    fi
+
+    add_directories "/opt/pasarguard"
+    add_directories "/var/lib/pasarguard"
+    
+    success "Database type: $db_type"
+    success "Database user: $db_user"
+    success "Database password: $db_password"
+    success "Database host: $db_host"
+    success "Database port: $db_port"
+    success "Database name: $db_name"
+
+    local DB_PATH="/root/_${REMARK}${DATABASE_SUFFIX}"
+    
+    if [[ "$db_type" == "postgresql" ]]; then
+        local pg_container=$(docker ps --filter "ancestor=postgres" --filter "ancestor=timescaledb/timescaledb" --format "{{.Names}}" | head -n 1)
+        if [[ -z "$pg_container" ]]; then
+            pg_container=$(docker ps --filter "publish=$db_port" --format "{{.Names}}" | head -n 1)
+        fi
+        BACKUP_DB_COMMAND="docker exec -e PGPASSWORD='$db_password' $pg_container pg_dump -U $db_user -d '$db_name' > $DB_PATH"
+        DIRECTORIES+=($DB_PATH)
+    elif [[ "$db_type" == "mysql" || "$db_type" == "mariadb" ]]; then
+        BACKUP_DB_COMMAND="mysqldump --column-statistics=0 -h $db_host -P $db_port -u $db_user -p'$db_password' '$db_name' > $DB_PATH"
+        DIRECTORIES+=($DB_PATH)
+    fi
+
+    # Export backup variables
+    BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
+    log "Complete PasarGuard"
+    confirm
 }
 
 
@@ -472,6 +564,7 @@ ovpanel_template() {
     log "Checking OvPanel configuration..."
 
     local OVPANEL_DB_FOLDER="/opt/ov-panel/data"
+    local OVPANEL_CONFIG_FOLDER="/etc/openvpn"
 
     # Check if the database file exists
     if [ ! -f "$OVPANEL_DB_FOLDER" ]; then
@@ -479,8 +572,14 @@ ovpanel_template() {
         return 1
     fi
 
+    if [ ! -d "$OVPANEL_CONFIG_FOLDER" ]; then
+        error "Configuration directory not found: $OVPANEL_CONFIG_FOLDER"
+        return 1
+    fi
+
     # Add the database file to BACKUP_DIRECTORIES
     add_directories "$OVPANEL_DB_FOLDER"
+    add_directories "$OVPANEL_CONFIG_FOLDER"
 
     # Export backup variables
     BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
