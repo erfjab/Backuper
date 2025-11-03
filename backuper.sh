@@ -269,6 +269,7 @@ generate_template() {
     print "12) MarzHelp + Marzban"
     print "13) Phantom"
     print "14) OvPanel"
+    print "15) MarzGozir"
     print "0) Custom"
     print ""
     while true; do
@@ -328,6 +329,10 @@ generate_template() {
                 ;;
             14)
                 ovpanel_template
+                break
+                ;;
+            15)
+                marzgozir_template
                 break
                 ;;
             0)
@@ -397,6 +402,27 @@ toggle_directories() {
     BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
 }
 
+
+marzgozir_template() {
+    log "Checking MarzGozir configuration..."
+
+    local MARZGOZIR_DB_FOLDER="/opt/marzgozir/data"
+
+    # Check if the database file exists
+    if [ ! -f "$MARZGOZIR_DB_FOLDER" ]; then
+        error "Database file not found: $MARZGOZIR_DB_FOLDER"
+        return 1
+    fi
+
+    # Add the database file to BACKUP_DIRECTORIES
+    add_directories "$MARZGOZIR_DB_FOLDER"
+
+    # Export backup variables
+    BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
+    log "Complete MarzGozir"
+    confirm
+}
+
 remnawave_template() {
     log "Checking Remnawave configuration..."
 
@@ -445,7 +471,7 @@ remnawave_template() {
 ovpanel_template() {
     log "Checking OvPanel configuration..."
 
-    local OVPANEL_DB_FOLDER="/opt/ov-panel/data/ov-panel.db"
+    local OVPANEL_DB_FOLDER="/opt/ov-panel/data"
 
     # Check if the database file exists
     if [ ! -f "$OVPANEL_DB_FOLDER" ]; then
