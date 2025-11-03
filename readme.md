@@ -43,6 +43,10 @@
 - [x] **MarzGozir**
 - [x] **PasarGuard**
 
+> [!IMPORTANT]
+> We thank [AsanPanelBot](https://t.me/AsanPanelBot) for supporting and sponsoring this. project.
+
+
 ## Installation  
 
 To install the latest version, run:  
