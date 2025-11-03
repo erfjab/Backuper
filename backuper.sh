@@ -321,6 +321,10 @@ generate_template() {
                 phantom_template
                 break
                 ;;
+            13)
+                ovpanel_template
+                break
+                ;;
             0)
                 break
                 ;;
