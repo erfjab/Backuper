@@ -26,17 +26,19 @@
 
 ## قالب‌های پشتیبانی‌شده  
 
-- [x] **X-ui**  
+- [x] **X-ui**
 - [x] **S-ui**
 - [x] **Hiddify**
-- [x] **Marzneshin**  
-- [x] **Marzneshin Logs**  
-- [x] **Marzban**  
-- [x] **Marzban Logs**  
-- [x] **MirzaBot**  
-- [x] **WalBot**  
-- [x] **HolderBot**  
-- [x] **MarzHelp + Marzban**  
+- [x] **Marzneshin**
+- [x] **Marzneshin Logs**
+- [x] **Marzban**
+- [x] **Marzban Logs**
+- [x] **MirzaBot**
+- [x] **Walpanel**
+- [x] **HolderBot**
+- [x] **MarzHelp + Marzban**
+- [x] **Phantom**
+- [x] **OvPanel**
 
 ## نصب  
 

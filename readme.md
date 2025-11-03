@@ -2,7 +2,7 @@
   <img src="https://github.com/user-attachments/assets/16cc16e2-f1e5-4ae8-9b5f-bbea33fa39bd" alt="Backuper Logo" />
 </div>
 
-# What is Backuper? [Persion](readme-fa.md)
+# What is Backuper? [Persian](readme-fa.md)
 **Backuper** is an automated backup script with full customization options and support for multiple platforms.  
 
 ## Supported Platforms  
@@ -26,17 +26,19 @@
 
 ## Supported Templates  
 
-- [x] **X-ui**  
-- [x] **S-ui**  
+- [x] **X-ui**
+- [x] **S-ui**
 - [x] **Hiddify**
-- [x] **Marzneshin**  
-- [x] **Marzneshin Logs**  
-- [x] **Marzban**  
-- [x] **Marzban Logs**  
-- [x] **MirzaBot**  
-- [x] **WalBot**  
+- [x] **Marzneshin**
+- [x] **Marzneshin Logs**
+- [x] **Marzban**
+- [x] **Marzban Logs**
+- [x] **MirzaBot**
+- [x] **Walpanel**
 - [x] **HolderBot**
-- [x] **MarzHelp + Marzban** 
+- [x] **MarzHelp + Marzban**
+- [x] **Phantom**
+- [x] **OvPanel**
 
 ## Installation  
 
