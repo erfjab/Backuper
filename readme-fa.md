@@ -40,7 +40,6 @@
 - [x] **MarzHelp + Marzban**
 - [x] **Phantom**
 - [x] **OvPanel**
-- [x] **Remnawave**
 
 ## نصب  
 
