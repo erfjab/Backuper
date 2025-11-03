@@ -1131,11 +1131,30 @@ telegram_progress() {
             fi
         done
 
+        while true; do
+            input "Enter the topic ID (Press Enter to skip): " TOPIC_ID
+            if [[ -z "$TOPIC_ID" ]]; then
+                success "No topic ID provided. Messages will be sent to the main chat."
+                TOPIC_ID=""
+                break
+            elif [[ ! "$TOPIC_ID" =~ ^[0-9]+$ ]]; then
+                wrong "Invalid topic ID format! Must be a number."
+            else
+                success "Topic ID set: $TOPIC_ID"
+                break
+            fi
+        done
+
         # Validate bot token and chat ID
         log "Checking Telegram bot..."
-        response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" -d chat_id="$CHAT_ID" -d text="Hi, Backuper Test Message!")
+        if [[ -n "$TOPIC_ID" ]]; then
+            response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" -d chat_id="$CHAT_ID" -d message_thread_id="$TOPIC_ID" -d text="Hi, Backuper Test Message!")
+        else
+            response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" -d chat_id="$CHAT_ID" -d text="Hi, Backuper Test Message!")
+        fi
+        
         if [[ "$response" -ne 200 ]]; then
-            wrong "Invalid bot token or chat ID, or Telegram API error! [tip: start bot]"
+            wrong "Invalid bot token, chat ID, topic ID, or Telegram API error! [tip: start bot]"
         else
             success "Bot token and chat ID are valid."
             break
@@ -1143,7 +1162,12 @@ telegram_progress() {
     done
 
     # Set the platform command for sending files
-    PLATFORM_COMMAND="curl -s -F \"chat_id=$CHAT_ID\" -F \"document=@\$FILE\" -F \"caption=\$CAPTION\" -F \"parse_mode=HTML\" \"https://api.telegram.org/bot$BOT_TOKEN/sendDocument\""
+    if [[ -n "$TOPIC_ID" ]]; then
+        PLATFORM_COMMAND="curl -s -F \"chat_id=$CHAT_ID\" -F \"message_thread_id=$TOPIC_ID\" -F \"document=@\$FILE\" -F \"caption=\$CAPTION\" -F \"parse_mode=HTML\" \"https://api.telegram.org/bot$BOT_TOKEN/sendDocument\""
+    else
+        PLATFORM_COMMAND="curl -s -F \"chat_id=$CHAT_ID\" -F \"document=@\$FILE\" -F \"caption=\$CAPTION\" -F \"parse_mode=HTML\" \"https://api.telegram.org/bot$BOT_TOKEN/sendDocument\""
+    fi
+    
     CAPTION="
 📦 <b>From </b><code>\${ip}</code> [By <b><a href='https://t.me/erfjabs'>@ErfJabs</a></b>]
 <b>➖➖➖➖Sponsor➖➖➖➖</b>
