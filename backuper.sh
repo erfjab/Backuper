@@ -8,8 +8,8 @@ readonly DATABASE_SUFFIX="${TAG}sql"
 readonly LOGS_SUFFIX="${TAG}log"
 readonly VERSION="v0.4.0"
 readonly OWNER="@ErfJabs"
-readonly SPONSORTEXT="Loading..."
-readonly SPONSORLINK="https://t.me/ErfJabs"
+readonly SPONSORTEXT="🚀 ساخت پنل نمایندگی V2Ray بدون دانش فنی! در چند ثانیه پنلت رو بساز و شروع به درآمد کن"
+readonly SPONSORLINK="https://t.me/AsanPanelBot"
 
 
 # ANSI color codes
