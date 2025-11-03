@@ -267,6 +267,7 @@ generate_template() {
     print "10) HolderBot"
     print "11) MarzHelp + Marzban"
     print "12) Phantom"
+    print "13) OvPanel"
     print "0) Custom"
     print ""
     while true; do
@@ -385,6 +386,26 @@ toggle_directories() {
         fi
     done
     BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
+}
+
+ovpanel_template() {
+    log "Checking OvPanel configuration..."
+
+    local OVPANEL_DB_FOLDER="/opt/ov-panel/data/ov-panel.db"
+
+    # Check if the database file exists
+    if [ ! -f "$OVPANEL_DB_FOLDER" ]; then
+        error "Database file not found: $OVPANEL_DB_FOLDER"
+        return 1
+    fi
+
+    # Add the database file to BACKUP_DIRECTORIES
+    add_directories "$OVPANEL_DB_FOLDER"
+
+    # Export backup variables
+    BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
+    log "Complete OvPanel"
+    confirm
 }
 
 holderbot_template() {
