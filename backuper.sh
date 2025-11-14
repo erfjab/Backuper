@@ -269,8 +269,9 @@ generate_template() {
     print "12) MarzHelp + Marzban"
     print "13) Phantom"
     print "14) OvPanel"
-    print "15) MarzGozir"
-    print "16) PasarGuard"
+    print "15) OvNode"
+    print "16) MarzGozir"
+    print "17) PasarGuard"
     print "0) Custom"
     print ""
     while true; do
@@ -333,10 +334,14 @@ generate_template() {
                 break
                 ;;
             15)
-                marzgozir_template
+                ovnode_template
                 break
                 ;;
             16)
+                marzgozir_template
+                break
+                ;;
+            17)
                 pasarguard_template
                 break
                 ;;
@@ -405,6 +410,32 @@ toggle_directories() {
         fi
     done
     BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
+}
+
+ovnode_template() {
+    log "Checking OvNode configuration..."
+
+    local OPENVPN_DB_FOLDER="/etc/openvpn"
+    local OVNODE_DB_FOLDER="/opt/ov-node"
+
+    # Check if the database file exists
+    if [ ! -f "$OPENVPN_DB_FOLDER" ]; then
+        error "OpenVPN file not found: $OPENVPN_DB_FOLDER"
+        return 1
+    fi
+    if [ ! -f "$OVNODE_DB_FOLDER" ]; then
+        error "Database file not found: $OVNODE_DB_FOLDER"
+        return 1
+    fi
+
+    # Add the database file to BACKUP_DIRECTORIES
+    add_directories "$OPENVPN_DB_FOLDER"
+    add_directories "$OVNODE_DB_FOLDER"
+
+    # Export backup variables
+    BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
+    log "Complete OvNode"
+    confirm
 }
 
 pasarguard_template() {
@@ -563,8 +594,7 @@ remnawave_template() {
 ovpanel_template() {
     log "Checking OvPanel configuration..."
 
-    local OVPANEL_DB_FOLDER="/opt/ov-panel/data"
-    local OVPANEL_CONFIG_FOLDER="/etc/openvpn"
+    local OVPANEL_DB_FOLDER="/opt/ov-panel"
 
     # Check if the database file exists
     if [ ! -f "$OVPANEL_DB_FOLDER" ]; then
@@ -572,14 +602,10 @@ ovpanel_template() {
         return 1
     fi
 
-    if [ ! -d "$OVPANEL_CONFIG_FOLDER" ]; then
-        error "Configuration directory not found: $OVPANEL_CONFIG_FOLDER"
-        return 1
-    fi
 
     # Add the database file to BACKUP_DIRECTORIES
-    add_directories "$OVPANEL_DB_FOLDER"
-    add_directories "$OVPANEL_CONFIG_FOLDER"
+    add_directories "$OVPANEL_DB_FOLDER/data"
+    add_directories "$OVPANEL_DB_FOLDER/.env"
 
     # Export backup variables
     BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
