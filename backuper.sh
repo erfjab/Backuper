@@ -259,19 +259,20 @@ generate_template() {
     print "2) S-ui"
     print "3) Hiddify"
     print "4) Remnawave"
-    print "5) Marzneshin"
-    print "6) Marzneshin Logs"
-    print "7) Marzban"
-    print "8) Marzban Logs"
-    print "9) MirzaBot"
-    print "10) Walpanel"
-    print "11) HolderBot"
-    print "12) MarzHelp + Marzban"
-    print "13) Phantom"
-    print "14) OvPanel"
-    print "15) OvNode"
-    print "16) MarzGozir"
-    print "17) PasarGuard"
+    print "5) Rebecca"
+    print "6) Marzneshin"
+    print "7) Marzneshin Logs"
+    print "8) Marzban"
+    print "9) Marzban Logs"
+    print "10) MirzaBot"
+    print "11) Walpanel"
+    print "12) HolderBot"
+    print "13) MarzHelp + Marzban"
+    print "14) Phantom"
+    print "15) OvPanel"
+    print "16) OvNode"
+    print "17) MarzGozir"
+    print "18) PasarGuard"
     print "0) Custom"
     print ""
     while true; do
@@ -294,54 +295,58 @@ generate_template() {
                 break
                 ;;
             5)
-                marzneshin_template
+                rebecca_template
                 break
                 ;;
             6)
-                marzneshin_logs_template
+                marzneshin_template
                 break
                 ;;
             7)
-                marzban_template
+                marzneshin_logs_template
                 break
                 ;;
             8)
-                marzban_logs_template
+                marzban_template
                 break
                 ;;
             9)
-                mirzabot_template
+                marzban_logs_template
                 break
                 ;;
             10)
-                walpanel_template
+                mirzabot_template
                 break
                 ;;
             11)
-                holderbot_template
+                walpanel_template
                 break
                 ;;
             12)
-                marzhelp_template
+                holderbot_template
                 break
                 ;;
             13)
-                phantom_template
+                marzhelp_template
                 break
                 ;;
             14)
-                ovpanel_template
+                phantom_template
                 break
                 ;;
             15)
-                ovnode_template
+                ovpanel_template
                 break
                 ;;
             16)
-                marzgozir_template
+                ovnode_template
                 break
                 ;;
             17)
+                marzgozir_template
+                break
+                ;;
+            18)
                 pasarguard_template
                 break
                 ;;
@@ -905,6 +910,69 @@ marzban_template() {
     # Export backup variables
     BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
     log "Complete Marzban"
+    confirm
+}
+
+
+rebecca_template() {
+    log "Checking environment file..."
+    local env_file="/opt/rebecca/.env"
+
+    [[ -f "$env_file" ]] || { error "Environment file not found: $env_file"; return 1; }
+
+    local db_type db_name db_user db_password db_host db_port
+    local BACKUP_DIRECTORIES=("/var/lib/rebecca")  # Add default volume
+
+    # Extract SQLALCHEMY_DATABASE_URL from .env file
+    local SQLALCHEMY_DATABASE_URL=$(grep -v '^#' "$env_file" | grep 'SQLALCHEMY_DATABASE_URL' | awk -F '=' '{print $2}' | tr -d ' ' | tr -d '"' | tr -d "'")
+
+    if [[ -z "$SQLALCHEMY_DATABASE_URL" || "$SQLALCHEMY_DATABASE_URL" == *"sqlite3"* ]]; then
+        db_type="sqlite3"
+        db_name=""
+        db_user=""
+        db_password=""
+        db_host=""
+        db_port=""
+    else
+        # Parse SQLALCHEMY_DATABASE_URL to extract database details
+        if [[ "$SQLALCHEMY_DATABASE_URL" =~ ^(mysql\+pymysql|mariadb\+pymysql)://([^:]+):([^@]+)@([^:]+):([0-9]+)/(.+)$ ]]; then
+            db_type="${BASH_REMATCH[1]%%+*}"  # Extract mysql or mariadb
+            db_user="${BASH_REMATCH[2]}"
+            db_password="${BASH_REMATCH[3]}"
+            db_host="${BASH_REMATCH[4]}"
+            db_port="${BASH_REMATCH[5]}"
+            db_name="${BASH_REMATCH[6]}"
+        elif [[ "$SQLALCHEMY_DATABASE_URL" =~ ^(mysql\+pymysql|mariadb\+pymysql)://([^:]+):([^@]+)@([0-9.]+)/(.+)$ ]]; then
+            db_type="${BASH_REMATCH[1]%%+*}"  # Extract mysql or mariadb
+            db_user="${BASH_REMATCH[2]}"
+            db_password="${BASH_REMATCH[3]}"
+            db_host="${BASH_REMATCH[4]}"
+            db_port="3306"  # Default MySQL/MariaDB port
+            db_name="${BASH_REMATCH[5]}"
+        else
+            error "Invalid SQLALCHEMY_DATABASE_URL format in $env_file."
+            return 1
+        fi
+    fi
+    add_directories "/opt/rebecca"
+    add_directories "/var/lib/rebecca"
+    success "Database type: $db_type"
+    success "Database user: $db_user"
+    success "Database password: $db_password"
+    success "Database host: $db_host"
+    success "Database port: $db_port"
+    success "Database name: $db_name"
+
+    local DB_PATH="/root/_${REMARK}${DATABASE_SUFFIX}"
+    # Generate backup command for MySQL/MariaDB
+    if [[ "$db_type" != "sqlite3" ]]; then
+        BACKUP_DB_COMMAND="mysqldump --column-statistics=0 -h $db_host -P $db_port -u $db_user -p'$db_password' '$db_name' > $DB_PATH"
+        DIRECTORIES+=($DB_PATH)
+    fi
+
+    # Export backup variables
+    BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
+    log "Complete Rebecca"
     confirm
 }
 
