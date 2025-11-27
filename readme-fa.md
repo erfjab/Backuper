@@ -30,6 +30,7 @@
 - [x] **S-ui**
 - [x] **Hiddify**
 - [x] **Remnawave**
+- [x] **Rebecca**
 - [x] **Marzneshin**
 - [x] **Marzneshin Logs**
 - [x] **Marzban**
