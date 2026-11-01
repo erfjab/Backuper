@@ -6,7 +6,7 @@ readonly TAG="_backuper."
 readonly BACKUP_SUFFIX="${TAG}7z"
 readonly DATABASE_SUFFIX="${TAG}sql"
 readonly LOGS_SUFFIX="${TAG}log"
-readonly VERSION="v0.6.0"
+readonly VERSION="v0.7.0"
 readonly OWNER=""
 readonly SPONSORTEXT=""
 readonly SPONSORLINK=""
@@ -94,6 +94,7 @@ menu() {
         print "2) Remove All Backupers"
         print "3) Run All Backup Scripts"
         print "4) Exit"
+        print "5) Update an existing backup and its schedules"
         print ""
         input "Choose an option:" choice
         case $choice in
@@ -117,6 +118,9 @@ menu() {
             4)
                 print "Thank you for using @ErfJabs script. Goodbye!"
                 exit 0
+                ;;
+            5)
+                update_existing
                 ;;
             *)
                 wrong "Invalid option, Please select a valid option!"
@@ -196,7 +200,7 @@ cleanup_backups() {
 start_backup() {
     install_core_dependencies
     generate_remark
-    generate_timer
+    generate_schedules
     generate_template
     toggle_directories
     generate_platform
@@ -216,7 +220,7 @@ generate_remark() {
             wrong "Remark must contain only letters, numbers, or underscores."
         elif [ ${#REMARK} -lt 3 ]; then
             wrong "Remark must be at least 3 characters long."
-        elif [ -e "${REMARK}${SCRIPT_SUFFIX}" ]; then
+        elif [ -e "/root/_${REMARK}${SCRIPT_SUFFIX}" ]; then
             wrong "File ${REMARK}${SCRIPT_SUFFIX} already exists. Choose a different remark."
         else
             success "Backup remark: $REMARK"
@@ -244,39 +248,182 @@ generate_caption() {
     sleep 1
 }
 
-generate_timer() {
-    clear
-    print "[TIMER]\n"
-    print "Enter a time interval in minutes for sending backups."
-    print "For example, '10' means backups will be sent every 10 minutes.\n"
-
+# Cron uses the server's local timezone.
+schedule_prompt() {
+    local label="$1" result="$2" frequency time hour minute day
+    print "[$label SCHEDULE]" >&2
     while true; do
-        input "Enter the number of minutes (1-1440): " minutes
-
-        if ! [[ "$minutes" =~ ^[0-9]+$ ]]; then
-            wrong "Please enter a valid number."
-        elif [ "$minutes" -lt 1 ] || [ "$minutes" -gt 1440 ]; then
-            wrong "Number must be between 1 and 1440."
-        else
-            break
-        fi
+        input "1) Daily  2) Weekly: " frequency
+        [[ "$frequency" == 1 || "$frequency" == 2 ]] && break
+        wrong "Choose 1 or 2."
     done
-
-    if [ "$minutes" -le 59 ]; then
-        TIMER="*/$minutes * * * *"
-    elif [ "$minutes" -le 1439 ]; then
-        hours=$((minutes / 60))
-        remaining_minutes=$((minutes % 60))
-        if [ "$remaining_minutes" -eq 0 ]; then
-            TIMER="0 */$hours * * *"
-        else
-            TIMER="*/$remaining_minutes */$hours * * *"
+    while true; do
+        input "Time (HH:MM, server local time): " time
+        if [[ "$time" =~ ^([0-9]{2}):([0-9]{2})$ ]]; then
+            hour=$((10#${BASH_REMATCH[1]})); minute=$((10#${BASH_REMATCH[2]}))
+            (( hour < 24 && minute < 60 )) && break
         fi
-    else
-        TIMER="0 0 * * *" 
+        wrong "Enter a valid time, for example 03:30."
+    done
+    day='*'
+    if [[ "$frequency" == 2 ]]; then
+        while true; do
+            input "Day of week (1=Monday ... 7=Sunday): " day
+            [[ "$day" =~ ^[1-7]$ ]] && break
+            wrong "Choose a day from 1 to 7."
+        done
+        [[ "$day" == 7 ]] && day=0
     fi
-    success "Cron job set to run every $minutes minutes: $TIMER"
-    sleep 1
+    printf -v "$result" '%s %s * * %s' "$minute" "$hour" "$day"
+}
+
+generate_schedules() {
+    schedule_prompt "BACKUP" BACKUP_TIMER
+    schedule_prompt "SEND" SEND_TIMER
+}
+
+# Replace only jobs invoking this exact script, including legacy jobs.
+install_schedules() {
+    local script="$1" current filtered
+    current=$(crontab -l 2>/dev/null) || current=''
+    filtered=$(printf '%s\n' "$current" | awk -v path="$script" '
+        index($0, path) {
+            rest = substr($0, index($0, path) + length(path), 1)
+            if (rest == "" || rest ~ /[[:space:]]/) next
+        }
+        NF { print }
+    ')
+    { [[ -z "$filtered" ]] || printf '%s\n' "$filtered"; printf '%s %s backup\n%s %s send\n' "$BACKUP_TIMER" "$script" "$SEND_TIMER" "$script"; } | crontab -
+}
+
+# Convert scripts produced by the previous installer without asking for secrets again.
+upgrade_script() {
+    local script="$1" remark="$2" tmp command notice_command version
+    grep -q '^# Backuper separated schedules v2$' "$script" && return 0
+    version=legacy
+    if grep -q '^# Backuper separated schedules v1$' "$script"; then
+        version=v1
+    else
+        for marker in '# Variables' '# Backup database' '# Compress files' '# Send backup files'; do
+            grep -Fxq "$marker" "$script" || { warn "Unsupported script format: $script (missing $marker). No changes made."; return 1; }
+        done
+    fi
+    command=$(sed -n '/^[[:space:]]*if .*\(document=@\|file=@\|mutt .* -a \)/{ s/^[[:space:]]*if //; s/; then[[:space:]]*$//; p; }' "$script")
+    [[ -n "$command" && "$command" != *$'\n'* ]] || { warn "Unsupported delivery command in $script. No changes made."; return 1; }
+    case "$command" in
+        *'document=@$FILE'*)
+            notice_command=${command/'-F "document=@$FILE"'/}
+            notice_command=${notice_command/'-F "caption=$CAPTION"'/'-F "text=$notice"'}
+            notice_command=${notice_command/'/sendDocument"'/'/sendMessage"'}
+            ;;
+        *'file=@$FILE'*)
+            notice_command=${command/'-F "file=@$FILE"'/}
+            notice_command=${notice_command/'$CAPTION'/'$notice'}
+            ;;
+        *'mutt '*)
+            notice_command=${command/'-a "$FILE"'/}
+            notice_command=${notice_command/'$CAPTION'/'$notice'}
+            ;;
+        *) warn "Unsupported delivery command in $script. No changes made."; return 1 ;;
+    esac
+    [[ "$notice_command" != "$command" ]] || { warn "Could not prepare notification. No changes made."; return 1; }
+    command=${command/'curl -s '/'curl -fsS '}
+    notice_command=${notice_command/'curl -s '/'curl -fsS '}
+    tmp=$(mktemp "${script}.XXXXXX") || return 1
+    {
+        if [[ "$version" == v1 ]]; then
+            sed '/^send)$/,$d; s/^# Backuper separated schedules v1$/# Backuper separated schedules v2/' "$script"
+        else
+        cat <<'RUNTIME'
+#!/bin/bash
+# Backuper separated schedules v2
+set -e
+umask 077
+RUNTIME
+        # Preserve the caption and all existing platform/database commands verbatim.
+        sed -n '/^ip=/p; /^CAPTION=/p' "$script"
+        printf 'remark=%q\n' "$remark"
+        cat <<'RUNTIME'
+store="/root/._backuper_${remark}_archives"
+mkdir -p "$store"
+exec 9>"$store/.lock"
+flock 9
+case "${1:-backup}" in
+backup)
+    work=$(mktemp -d "$store/.pending.XXXXXX")
+    trap 'rm -rf -- "$work"' EXIT
+    timestamp=$(date +%Y%m%d-%H%M%S)
+    backup_name="$work/${timestamp}_${remark}_backuper.7z"
+RUNTIME
+        sed -n '/^# Backup database$/,/^# Send backup files$/{ /^# Backup database$/d; /^# Send backup files$/d; p; }' "$script"
+        cat <<'RUNTIME'
+    compgen -G "$backup_name*" >/dev/null || { echo "Archive was not created" >&2; exit 1; }
+    destination="$store/$timestamp"
+    [[ ! -e "$destination" ]] || destination="$destination-$$"
+    mv -- "$work" "$destination"
+    trap - EXIT
+    echo "Backup saved: $destination"
+    ;;
+RUNTIME
+        fi
+        cat <<'RUNTIME'
+send)
+    latest=$(find "$store" -mindepth 1 -maxdepth 1 -type d ! -name '.*' -printf '%f\n' | LC_ALL=C sort | tail -n 1)
+    [[ -n "$latest" ]] || { echo "No completed backups found" >&2; exit 1; }
+    first=$(find "$store/$latest" -maxdepth 1 -type f -name '*_backuper.7z*' -print | LC_ALL=C sort | head -n 1)
+    [[ -n "$first" ]] || { echo "No archive parts found" >&2; exit 1; }
+    base_name="${first%%.7z*}."
+    shopt -s nullglob
+    parts=("${base_name}"7z*)
+    (( ${#parts[@]} > 0 )) || { echo "No archive parts found" >&2; exit 1; }
+    bytes=0
+    for FILE in "${parts[@]}"; do
+        size=$(stat -c %s -- "$FILE")
+        bytes=$((bytes + size))
+    done
+    if (( bytes > 10 * 1024 * 1024 )); then
+        notice="Backup ${remark} is too large to send (over 10 MiB). It remains on the server."
+RUNTIME
+        printf '        %s\n' "$notice_command"
+        cat <<'RUNTIME'
+        echo "Size notification sent."
+    else
+        for FILE in "${parts[@]}"; do
+            echo "Sending file: $FILE"
+RUNTIME
+        printf '            %s\n' "$command"
+        cat <<'RUNTIME'
+        done
+        echo "All backup parts sent successfully."
+    fi
+    # Do not remove older backups if delivery or notification failed.
+    find "$store" -mindepth 1 -maxdepth 1 -type d ! -name '.*' ! -name "$latest" -exec rm -rf -- {} +
+    ;;
+*) echo "Usage: $0 {backup|send}" >&2; exit 2 ;;
+esac
+RUNTIME
+    } > "$tmp"
+    if ! bash -n "$tmp"; then rm -f "$tmp"; warn "Conversion failed; original script was not changed."; return 1; fi
+    chmod 700 "$tmp"
+    cp -p -- "$script" "${script}.before-separated-schedules" || { rm -f "$tmp"; return 1; }
+    chmod 600 "${script}.before-separated-schedules"
+    mv -f -- "$tmp" "$script"
+}
+
+update_existing() {
+    local scripts=(/root/*"$SCRIPT_SUFFIX") selected remark number
+    [[ -e "${scripts[0]}" ]] || { warn "No backup scripts found."; confirm; return; }
+    local i=1
+    for selected in "${scripts[@]}"; do print "$i) $(basename "$selected")"; ((i++)); done
+    input "Select a backup to update: " number
+    [[ "$number" =~ ^[0-9]+$ ]] && (( number >= 1 && number <= ${#scripts[@]} )) || { wrong "Invalid selection."; return; }
+    selected="${scripts[number-1]}"
+    remark=$(basename "$selected" "$SCRIPT_SUFFIX"); remark="${remark#_}"
+    generate_schedules
+    upgrade_script "$selected" "$remark" || return
+    install_schedules "$selected" || { warn "Could not update crontab."; return 1; }
+    success "Updated $selected. Backup: $BACKUP_TIMER; send: $SEND_TIMER"
+    confirm
 }
 
 generate_template() {
@@ -783,6 +930,7 @@ EOF
 
 generate_script() {
     clear
+    umask 077
     local BACKUP_PATH="/root/_${REMARK}${SCRIPT_SUFFIX}"
     log "Generating backup script: $BACKUP_PATH"
     DB_CLEANUP=""
@@ -838,39 +986,17 @@ fi
 rm -rf *"${REMARK}${TAG}"* 2>/dev/null || true
 EOL
 
-    # Make the script executable
-    chmod +x "$BACKUP_PATH"
-    success "Backup script created: $BACKUP_PATH"
-    
-    # Run the backup script with realtime output
-    log "Running the backup script..."
-    if bash "$BACKUP_PATH" 2>&1 | tee /tmp/backup.log; then
-        success "Backup script run successfully."
-        
-        # Set up cron job
-        log "Setting up cron job..."
-        if (crontab -l 2>/dev/null; echo "$TIMER $BACKUP_PATH") | crontab -; then
-            success "Cron job set up successfully. Backups will run every $minutes minutes."
-        else
-            error "Failed to set up cron job. Set it up manually: $TIMER $BACKUP_PATH"
-            exit 1
-        fi
-        
-        # Final success message
-        success "🎉 Your backup system is set up and running!"
-        success "Backup script location: $BACKUP_PATH"
-        success "Cron job: Every $minutes minutes"
-        success "First backup created and sent."
-        success "Thank you for using @ErfJabs backup script. Enjoy automated backups!"
-        exit 0
+    chmod 700 "$BACKUP_PATH"
+    upgrade_script "$BACKUP_PATH" "$REMARK" || return 1
+    install_schedules "$BACKUP_PATH" || error "Failed to install cron jobs"
+    success "Backup schedule: $BACKUP_TIMER; send schedule: $SEND_TIMER"
+    log "Creating the first backup..."
+    if bash "$BACKUP_PATH" backup; then
+        success "First backup created. It will be sent on the send schedule."
     else
-        error "Failed to run backup script. Full output:"
-        cat /tmp/backup.log
-        message="Backup script failed to run. Please check the server."
-        eval "$PLATFORM_COMMAND"
-        rm -f /tmp/backup.log
-        exit 1
+        warn "First backup failed. Check the output above; cron jobs remain installed."
     fi
+    confirm
 }
 
 main() {
